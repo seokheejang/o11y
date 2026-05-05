@@ -1,0 +1,30 @@
+# CODEOWNERS — PR 자동 리뷰어 지정
+# 형식: <pattern> <@user-or-team>
+# 참고: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-features/customizing-your-repository/about-code-owners
+
+# 기본 — 전체
+*                            @seokheejang
+
+# mixin 소스
+/mixins/                     @seokheejang
+/mixins/local/               @seokheejang
+/mixins/external/            @seokheejang
+
+# 빌드 산출물 (생성된 매니페스트)
+/manifests/                  @seokheejang
+
+# 테스트
+/tests/                      @seokheejang
+
+# 정책 문서 — 변경 신중
+/docs/                       @seokheejang
+
+# CI / 빌드 인프라
+/.github/                    @seokheejang
+/Makefile                    @seokheejang
+/jsonnetfile.json            @seokheejang
+
+# TODO: 팀 합류 시 도메인별 오너로 분리
+#   /mixins/local/rpc-mixin/   @blockchain-team
+#   /mixins/local/dns-mixin/   @platform-team
+#   /mixins/local/infra-mixin/ @sre-team

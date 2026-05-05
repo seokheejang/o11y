@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: validate (stub)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stub — TODO in next PR
+        run: |
+          echo "[stub] CI not yet implemented."
+          echo "Next PR will add:"
+          echo "  - jb install (cached)"
+          echo "  - make build  (jsonnet → manifests/)"
+          echo "  - make test   (promtool test rules)"
+          echo "  - make lint   (jsonnet-lint + kubeconform)"
+          echo "  - PR comment with diff of generated manifests"
