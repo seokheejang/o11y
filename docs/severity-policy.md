@@ -4,10 +4,12 @@
 
 ## 정책 표
 
-| Severity | 의미 | 채널 | 응답 기대 | repeat_interval |
-|----------|------|------|-----------|-----------------|
-| `critical` | 사용자 영향 발생 중 또는 즉박. 즉시 대응 필요 | PagerDuty + Slack `#alerts-critical` | **15분 이내 ack**, 1시간 이내 mitigation | `1h` |
-| `warning` | 사용자 영향 없음, 그러나 방치 시 critical로 진행 가능 | Slack `#alerts-warning`만 | **다음 영업일** 안에 확인 | `12h` |
+아래 채널/도구명은 **예시**다. fork 시 자기 환경(PagerDuty/Opsgenie/Slack/Teams 등)에 맞게 교체한다.
+
+| Severity | 의미 | 채널 (예시) | 응답 기대 | repeat_interval |
+|----------|------|-------------|-----------|-----------------|
+| `critical` | 사용자 영향 발생 중 또는 즉박. 즉시 대응 필요 | `<pager>` + `<critical-channel>` | **15분 이내 ack**, 1시간 이내 mitigation | `1h` |
+| `warning` | 사용자 영향 없음, 그러나 방치 시 critical로 진행 가능 | `<warning-channel>`만 | **다음 영업일** 안에 확인 | `12h` |
 
 ## 어떤 severity를 쓸지 판단 기준
 
@@ -43,13 +45,13 @@ route:
   receiver: default-slack
   routes:
     - matchers: [severity="critical"]
-      receiver: pagerduty
+      receiver: pager           # 예: PagerDuty / Opsgenie
       repeat_interval: 1h
       continue: true
     - matchers: [severity="critical"]
-      receiver: critical-slack
+      receiver: critical-chat   # 예: Slack #alerts-critical
     - matchers: [severity="warning"]
-      receiver: warning-slack
+      receiver: warning-chat    # 예: Slack #alerts-warning
       repeat_interval: 12h
 ```
 

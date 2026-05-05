@@ -7,8 +7,6 @@
 
 # mixin 소스
 /mixins/                     @seokheejang
-/mixins/local/               @seokheejang
-/mixins/external/            @seokheejang
 
 # 빌드 산출물 (생성된 매니페스트)
 /manifests/                  @seokheejang

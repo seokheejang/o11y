@@ -22,7 +22,7 @@
 
 새 룬북을 만들 때는 다음 템플릿을 복사:
 
-```markdown
+````markdown
 # <AlertName>
 
 ## Symptom
@@ -47,4 +47,4 @@
 
 ## Root cause
 <원인이 자주 어떤 것이었는지, 영구 해결 방향>
-```
+````

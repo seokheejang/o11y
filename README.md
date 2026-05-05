@@ -68,7 +68,7 @@ make build
 make test
 
 # 4. (ArgoCD가 sync하는 경우) 자동 반영. 수동 적용 시:
-kubectl apply -k manifests/
+kubectl apply -R -f manifests/
 ```
 
 ## Concepts

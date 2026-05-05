@@ -43,7 +43,7 @@
 annotations:
   summary: "RPC 노드 블록 헤드 정체 ({{ $labels.instance }})"
   description: "지난 10분간 블록 진행 없음. peer/sync 상태 확인 필요."
-  runbook_url: "https://github.com/seokheejang/o11y/blob/main/docs/runbooks/rpc-stalled.md"
+  runbook_url: "https://github.com/<your-org>/<your-repo>/blob/main/docs/runbooks/<alert-name>.md"
 ```
 
 `runbook_url`이 없는 critical 알림은 PR에서 막는다 (CI가 검증).

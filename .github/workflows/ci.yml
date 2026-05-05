@@ -2,8 +2,8 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  # main push 트리거는 실제 검증이 추가되는 다음 PR에서 활성화한다.
+  # 지금은 stub job이라 실행해도 의미 없음.
 
 jobs:
   validate:
