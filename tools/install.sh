@@ -22,6 +22,7 @@ JB_VERSION="v0.6.0"
 GOJSONTOYAML_VERSION="latest"
 PROMTOOL_VERSION="2.55.1"
 KUBECONFORM_VERSION="0.6.7"
+YQ_VERSION="4.45.1"  # mikefarah yq v4 — Linux fallback에서 핀해서 공급망 공격 면적 축소
 
 CHECK_ONLY=0
 BUILD_ONLY=0
@@ -203,9 +204,9 @@ ensure_native() {
                     ok "kubeconform installed"
                     ;;
                 yq)
-                    info "downloading yq v4 (mikefarah)"
+                    info "downloading yq v${YQ_VERSION} (mikefarah)"
                     sudo curl -fsSL -o /usr/local/bin/yq \
-                        "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}"
+                        "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_${ARCH}"
                     sudo chmod +x /usr/local/bin/yq
                     ok "yq installed"
                     ;;

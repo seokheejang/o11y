@@ -53,7 +53,7 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 | 도구 | macOS | Linux |
 |---|---|---|
 | `kubeconform` | `brew install kubeconform` | release tarball (auto, v0.6.7) |
-| `yq` (mikefarah v4) | `brew install yq` | release binary (auto, latest) |
+| `yq` (mikefarah v4) | `brew install yq` | release binary (auto, v4.45.1) |
 | `kind` | `brew install kind` | [kind 공식 가이드](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) (수동) |
 | `helm` | `brew install helm` | [helm 공식 가이드](https://helm.sh/docs/intro/install/) (수동) |
 | `kubectl` | `brew install kubectl` | [kubectl 공식 가이드](https://kubernetes.io/docs/tasks/tools/) (수동) |
