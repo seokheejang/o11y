@@ -17,17 +17,9 @@ jobs:
           go-version: '1.22'
           cache: true
 
-      - name: Install jsonnet toolchain
-        run: |
-          go install github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
-          go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
-          go install github.com/brancz/gojsontoyaml@latest
-
-      - name: Install yq
-        run: |
-          sudo curl -sL -o /usr/local/bin/yq \
-            https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+      # 도구 설치는 tools/install.sh로 통일 — 로컬과 CI가 같은 경로/버전 핀을 사용한다.
+      - name: Install toolchain (build-only — no kind/helm/kubectl)
+        run: bash tools/install.sh --build-only
 
       - name: Cache jsonnet vendor
         uses: actions/cache@v4
@@ -38,18 +30,6 @@ jobs:
 
       - name: jb install
         run: jb install
-
-      - name: Install promtool
-        run: |
-          curl -sL https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-amd64.tar.gz \
-            | tar xz -C /tmp
-          sudo mv /tmp/prometheus-2.55.1.linux-amd64/promtool /usr/local/bin/
-
-      - name: Install kubeconform
-        run: |
-          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
-            | tar xz -C /tmp
-          sudo mv /tmp/kubeconform /usr/local/bin/
 
       - run: make build
       - run: make test

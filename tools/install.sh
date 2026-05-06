@@ -24,7 +24,23 @@ PROMTOOL_VERSION="2.55.1"
 KUBECONFORM_VERSION="0.6.7"
 
 CHECK_ONLY=0
-[[ "${1:-}" == "--check" ]] && CHECK_ONLY=1
+BUILD_ONLY=0
+for arg in "$@"; do
+    case "${arg}" in
+        --check)      CHECK_ONLY=1 ;;
+        --build-only) BUILD_ONLY=1 ;;
+        -h|--help)
+            cat <<EOF
+Usage: $0 [--check] [--build-only]
+
+  --check       Only report missing tools, do not install.
+  --build-only  Skip e2e-only tools (kind, helm, kubectl) — useful in CI.
+EOF
+            exit 0
+            ;;
+        *) echo "unknown option: ${arg}"; exit 1 ;;
+    esac
+done
 
 # === OS / arch 감지 ===
 case "$(uname -s)" in
@@ -139,6 +155,9 @@ ensure_promtool() {
         dest="${gobin}/promtool"
         mv "${tmpdir}/prometheus-${PROMTOOL_VERSION}.${OS}-${ARCH}/promtool" "${dest}"
         ok "promtool installed → ${dest}"
+        if ! echo ":${PATH}:" | grep -q ":${gobin}:"; then
+            warn "  ⚠ ${gobin}이 PATH에 없음 — 새 셸을 열거나 export 필요"
+        fi
     else
         dest="/usr/local/bin/promtool"
         sudo mv "${tmpdir}/prometheus-${PROMTOOL_VERSION}.${OS}-${ARCH}/promtool" "${dest}"
@@ -148,9 +167,14 @@ ensure_promtool() {
     rm -rf "${tmpdir}"
 }
 
-# === 3. native 도구들 (kubeconform, yq, kind, helm, kubectl) ===
+# === 3. native 도구들 ===
+# 빌드 필수 : kubeconform, yq
+# e2e 전용  : kind, helm, kubectl  (--build-only 시 skip)
 ensure_native() {
-    local pkgs=(kubeconform yq kind helm kubectl)
+    local pkgs=(kubeconform yq)
+    if [[ ${BUILD_ONLY} -eq 0 ]]; then
+        pkgs+=(kind helm kubectl)
+    fi
     local rc=0
     for bin in "${pkgs[@]}"; do
         if have "${bin}"; then

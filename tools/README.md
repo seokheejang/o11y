@@ -5,9 +5,10 @@
 ## 한 줄 요약
 
 ```bash
-tools/install.sh           # 모든 도구 자동 설치 (멱등)
-tools/install.sh --check   # 설치 상태만 점검
-make all                   # vendor → build → test → lint
+tools/install.sh              # 모든 도구 자동 설치 (멱등)
+tools/install.sh --check      # 설치 상태만 점검
+tools/install.sh --build-only # e2e 도구 제외 (kind/helm/kubectl 스킵, CI용)
+make all                      # vendor → build → test → lint
 ```
 
 ## 스크립트
@@ -68,7 +69,9 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 
 ## CI 환경
 
-`.github/workflows/ci.yml`이 동일 도구·동일 버전을 GitHub Actions ubuntu runner에 설치한다. `setup-go@v5`가 Go 모듈 캐시를 자동 처리. 로컬과 CI 차이 없음.
+`.github/workflows/ci.yml`이 같은 `tools/install.sh --build-only`를 호출해서 도구를 설치한다 — 로컬과 CI가 같은 버전 핀과 같은 설치 경로를 공유. `--build-only`는 e2e 전용 도구(kind/helm/kubectl)를 건너뛴다(CI에서 e2e를 돌리지 않으므로).
+
+Go 버전은 `setup-go@v5`로 1.22 핀(go-jsonnet/jb 빌드에 충분). 로컬이 더 최신이어도 무관.
 
 ## OSS 사용자 — 한 줄로 시작
 
