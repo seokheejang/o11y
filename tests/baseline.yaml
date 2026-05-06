@@ -1,0 +1,99 @@
+# promtool 단위 테스트 — baseline-mixin의 critical 5개 발화 시나리오.
+# 빌드 의존: tools/build.sh가 out/prometheus-rules-raw/baseline.yaml 생성한 후 실행.
+
+rule_files:
+  - ../out/prometheus-rules-raw/baseline.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # 1) PrometheusRuleFailures — eval 실패 시 5분 후 critical
+  - interval: 1m
+    name: PrometheusRuleFailures fires when rule eval failures increase
+    input_series:
+      - series: 'prometheus_rule_evaluation_failures_total{instance="prom-0"}'
+        values: '0+1x10'   # 매 분 1씩 증가 (increase > 0)
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: PrometheusRuleFailures
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              instance: prom-0
+            exp_annotations:
+              summary: 'Prometheus rule evaluation failing — alerting itself is degraded.'
+              description: 'prom-0 has rule eval failures in the last 5m. Other alerts may not fire.'
+              runbook_url: 'https://github.com/seokheejang/o11y/blob/main/docs/runbooks/PrometheusRuleFailures.md'
+
+  # 2) IngressControllerDown — up 시리즈 부재 시 5분 후 critical
+  - interval: 1m
+    name: IngressControllerDown fires when no ingress targets are up
+    input_series:
+      # 다른 job의 up만 있어 absent(up{ingress...}) == 1 만족
+      - series: 'up{job="kubelet"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IngressControllerDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: 'Ingress controller is down — north-south traffic blocked.'
+              description: 'No ingress controller targets are up. All external traffic via this controller fails.'
+              runbook_url: 'https://github.com/seokheejang/o11y/blob/main/docs/runbooks/IngressControllerDown.md'
+
+  # 3) CoreDNSDown — coredns up 시리즈 부재 시 5분 후 critical
+  - interval: 1m
+    name: CoreDNSDown fires when no CoreDNS targets are up
+    input_series:
+      - series: 'up{job="kubelet"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: CoreDNSDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: 'CoreDNS is down — service discovery broken.'
+              description: 'CoreDNS targets absent for 5m. All in-cluster DNS resolution affected.'
+              runbook_url: 'https://github.com/seokheejang/o11y/blob/main/docs/runbooks/CoreDNSDown.md'
+
+  # 4) HighOOMKillRate — 5분 동안 OOM 4건 이상 발생 시 critical
+  - interval: 1m
+    name: HighOOMKillRate fires on cluster-wide OOM burst
+    input_series:
+      - series: 'container_oom_events_total{namespace="ns-a", pod="p-1"}'
+        values: '0 1 2 3 4 5 6 7 8 9 10'   # 분당 1개 누적 → 5분 increase = 5 > 3 임계값
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighOOMKillRate
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: 'High OOMKill rate cluster-wide.'
+              description: '5 OOMKills in the last 5m. Indicates memory pressure or limit misconfiguration.'
+              runbook_url: 'https://github.com/seokheejang/o11y/blob/main/docs/runbooks/HighOOMKillRate.md'
+
+  # 5) AlertmanagerConfigInconsistent — config_hash 분기 시 10분 후 critical
+  - interval: 1m
+    name: AlertmanagerConfigInconsistent fires on HA config divergence
+    input_series:
+      - series: 'alertmanager_config_hash{job="alertmanager-main", service="am", cluster="c1", instance="am-0"}'
+        values: '1x15'
+      - series: 'alertmanager_config_hash{job="alertmanager-main", service="am", cluster="c1", instance="am-1"}'
+        values: '2x15'   # am-0 hash=1 vs am-1 hash=2 → 두 개 분기
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: AlertmanagerConfigInconsistent
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              service: am
+              cluster: c1
+            exp_annotations:
+              summary: 'Alertmanager HA replicas have divergent configs.'
+              description: 'Alertmanager service am has inconsistent config across replicas. Risk of duplicate or missed notifications.'
+              runbook_url: 'https://github.com/seokheejang/o11y/blob/main/docs/runbooks/AlertmanagerConfigInconsistent.md'

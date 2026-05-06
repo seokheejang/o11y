@@ -166,16 +166,6 @@ spec:
       for: 15m
       labels:
         severity: warning
-    - alert: KubeContainerWaiting
-      annotations:
-        description: 'pod/{{ $labels.pod }} in namespace {{ $labels.namespace }} on container {{ $labels.container}} has been in waiting state for longer than 1 hour. (reason: "{{ $labels.reason }}").'
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubecontainerwaiting
-        summary: Pod container waiting longer than 1 hour
-      expr: |
-        kube_pod_container_status_waiting_reason{reason!="CrashLoopBackOff", job="kube-state-metrics"} > 0
-      for: 1h
-      labels:
-        severity: warning
     - alert: KubeDaemonSetNotScheduled
       annotations:
         description: '{{ $value }} Pods of DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} are not scheduled.'
@@ -209,16 +199,6 @@ spec:
         kube_job_status_active{job="kube-state-metrics"} > 0) > 43200
       labels:
         severity: warning
-    - alert: KubeJobFailed
-      annotations:
-        description: Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete. Removing failed job after investigation should clear this alert.
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubejobfailed
-        summary: Job failed to complete.
-      expr: |
-        kube_job_failed{job="kube-state-metrics"}  > 0
-      for: 15m
-      labels:
-        severity: warning
     - alert: KubeHpaReplicasMismatch
       annotations:
         description: HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler  }} has not matched the desired number of replicas for longer than 15 minutes.
@@ -238,25 +218,6 @@ spec:
         kube_horizontalpodautoscaler_spec_max_replicas{job="kube-state-metrics"})
           and
         changes(kube_horizontalpodautoscaler_status_current_replicas{job="kube-state-metrics"}[15m]) == 0
-      for: 15m
-      labels:
-        severity: warning
-    - alert: KubeHpaMaxedOut
-      annotations:
-        description: HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler  }} has been running at max replicas for longer than 15 minutes.
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubehpamaxedout
-        summary: HPA is running at max replicas
-      expr: |
-        (
-          kube_horizontalpodautoscaler_status_current_replicas{job="kube-state-metrics"}
-            ==
-          kube_horizontalpodautoscaler_spec_max_replicas{job="kube-state-metrics"}
-        )
-        and on(namespace, horizontalpodautoscaler, cluster) (
-          kube_horizontalpodautoscaler_spec_max_replicas{job="kube-state-metrics"}
-            !=
-          kube_horizontalpodautoscaler_spec_min_replicas{job="kube-state-metrics"}
-        )
       for: 15m
       labels:
         severity: warning
@@ -431,31 +392,6 @@ spec:
       for: 15m
       labels:
         severity: warning
-    - alert: CPUThrottlingHigh
-      annotations:
-        description: '{{ $value | humanizePercentage }} throttling of CPU in namespace {{ $labels.namespace }} for container {{ $labels.container }} in pod {{ $labels.pod }}.'
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-cputhrottlinghigh
-        summary: Processes experience elevated CPU throttling.
-      expr: |
-        sum without (id, metrics_path, name, image, endpoint, job, node) (
-          topk by (cluster, namespace, pod, container, instance) (1,
-            increase(
-              container_cpu_cfs_throttled_periods_total{container!="", job="kubelet", metrics_path="/metrics/cadvisor", }
-            [5m])
-          )
-        )
-        / on (cluster, namespace, pod, container, instance) group_left
-        sum without (id, metrics_path, name, image, endpoint, job, node) (
-          topk by (cluster, namespace, pod, container, instance) (1,
-            increase(
-              container_cpu_cfs_periods_total{job="kubelet", metrics_path="/metrics/cadvisor", }
-            [5m])
-          )
-        )
-        > ( 25 / 100 )
-      for: 15m
-      labels:
-        severity: info
   - name: kubernetes-storage
     rules:
     - alert: KubePersistentVolumeFillingUp
@@ -578,63 +514,7 @@ spec:
       labels:
         severity: warning
   - name: kube-apiserver-slos
-    rules:
-    - alert: KubeAPIErrorBudgetBurn
-      annotations:
-        description: The API server is burning too much error budget.
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
-        summary: The API server is burning too much error budget.
-      expr: |
-        sum by(cluster) (apiserver_request:burnrate1h) > (14.40 * 0.01000)
-        and on(cluster)
-        sum by(cluster) (apiserver_request:burnrate5m) > (14.40 * 0.01000)
-      for: 2m
-      labels:
-        long: 1h
-        severity: critical
-        short: 5m
-    - alert: KubeAPIErrorBudgetBurn
-      annotations:
-        description: The API server is burning too much error budget.
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
-        summary: The API server is burning too much error budget.
-      expr: |
-        sum by(cluster) (apiserver_request:burnrate6h) > (6.00 * 0.01000)
-        and on(cluster)
-        sum by(cluster) (apiserver_request:burnrate30m) > (6.00 * 0.01000)
-      for: 15m
-      labels:
-        long: 6h
-        severity: critical
-        short: 30m
-    - alert: KubeAPIErrorBudgetBurn
-      annotations:
-        description: The API server is burning too much error budget.
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
-        summary: The API server is burning too much error budget.
-      expr: |
-        sum by(cluster) (apiserver_request:burnrate1d) > (3.00 * 0.01000)
-        and on(cluster)
-        sum by(cluster) (apiserver_request:burnrate2h) > (3.00 * 0.01000)
-      for: 1h
-      labels:
-        long: 1d
-        severity: warning
-        short: 2h
-    - alert: KubeAPIErrorBudgetBurn
-      annotations:
-        description: The API server is burning too much error budget.
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorbudgetburn
-        summary: The API server is burning too much error budget.
-      expr: |
-        sum by(cluster) (apiserver_request:burnrate3d) > (1.00 * 0.01000)
-        and on(cluster)
-        sum by(cluster) (apiserver_request:burnrate6h) > (1.00 * 0.01000)
-      for: 3h
-      labels:
-        long: 3d
-        severity: warning
-        short: 6h
+    rules: []
   - name: kubernetes-system-apiserver
     rules:
     - alert: KubeClientCertificateExpiration
@@ -951,16 +831,6 @@ spec:
         severity: warning
   - name: kubernetes-system-kube-proxy
     rules:
-    - alert: KubeProxyDown
-      annotations:
-        description: KubeProxy has disappeared from Prometheus target discovery.
-        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeproxydown
-        summary: Target disappeared from Prometheus target discovery.
-      expr: |
-        absent(up{job="kube-proxy"})
-      for: 15m
-      labels:
-        severity: critical
     - alert: KubeProxyInstanceUnreachable
       annotations:
         description: A KubeProxy instance has been unreachable for more than 15 minutes.
