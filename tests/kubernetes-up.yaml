@@ -1,0 +1,35 @@
+# promtool 단위 테스트 — 빌드 산출물(out/prometheus-rules-raw/) 위에서 알림 발화 시뮬레이션.
+# 빌드 의존성: tools/build.sh가 .spec만 추출한 raw rules를 out/ 아래 만든 후 실행.
+# (promtool은 PrometheusRule CR 구조를 이해하지 못해 manifests/ 산출물을 직접 못 먹음.)
+#
+# 검증 대상: kubernetes-mixin이 만드는 KubeAPIDown 알림.
+#   expr: absent(up{job="apiserver"})
+#   for:  15m
+#   severity: critical
+# absent()는 시계열이 존재하지 않을 때 1을 반환하므로, input_series에 apiserver up 시리즈를
+# 일부러 주지 않으면 즉시 0(false)이 아니라 1이 되어 발화 조건을 충족한다.
+
+rule_files:
+  - ../out/prometheus-rules-raw/kubernetes.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    name: KubeAPIDown — apiserver up 시리즈가 부재하면 15분 후 critical 발화
+    input_series:
+      # apiserver job은 의도적으로 빠뜨림 → absent()가 1 반환.
+      # 다른 job 시리즈만 줘서 시간이 흐르도록 한다.
+      - series: 'up{job="kubelet", instance="node-1"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: KubeAPIDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: apiserver
+            exp_annotations:
+              description: KubeAPI has disappeared from Prometheus target discovery.
+              runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapidown
+              summary: Target disappeared from Prometheus target discovery.

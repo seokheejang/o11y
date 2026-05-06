@@ -1,0 +1,25 @@
+# Kind cluster for o11y local e2e.
+# Ref: https://kind.sigs.k8s.io/docs/user/configuration/
+#
+# Topology:
+#   - control-plane : kube-prometheus-stack 컴포넌트들이 여기 들어옴.
+#   - worker        : 향후 더미 exporter / 시나리오 워크로드용 (3차 PR에서 사용).
+#
+# extraPortMappings:
+#   - 컨테이너의 NodePort(30090, 30030) → 호스트의 localhost:9090, localhost:3000
+#   - kube-prometheus-stack values에서 service type=NodePort + nodePort 핀과 짝.
+#   - 사용자는 `kubectl port-forward` 없이 브라우저에서 바로 열 수 있다.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # Prometheus UI
+      - containerPort: 30090
+        hostPort: 9090
+        protocol: TCP
+      # Grafana UI
+      - containerPort: 30030
+        hostPort: 3000
+        protocol: TCP
+  - role: worker
