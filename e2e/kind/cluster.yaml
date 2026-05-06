@@ -1,0 +1,13 @@
+# Kind cluster for o11y local e2e.
+# Ref: https://kind.sigs.k8s.io/docs/user/configuration/
+#
+# Topology:
+#   - control-plane : kube-prometheus-stack 컴포넌트들이 다 여기 들어옴(kind 노드 1개로도 충분).
+#   - worker        : 향후 더미 exporter / 시나리오 워크로드용 (3차 PR에서 사용).
+#
+# o11y는 Prometheus/Grafana UI를 port-forward로 접근 — ingress 불필요.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker

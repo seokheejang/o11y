@@ -26,36 +26,40 @@ Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://git
 ├── jsonnetfile.json          # jsonnet-bundler 의존성 (외부 mixin 목록)
 │
 ├── mixins/                   # mixin 소스
+│   ├── main.libsonnet            # 빌드 진입점 — multi-output 키 생성 (manifests/<kind>/<name>)
+│   ├── lib/                      # CR/ConfigMap wrapping 헬퍼
 │   ├── local/                    # 자체(in-house) mixin — 도메인별 디렉토리 (rpc-mixin/, dns-mixin/, ...)
 │   └── external/                 # 외부 mixin import wrapper (.libsonnet)
 │
 ├── vendor/                   # jb install 결과 (gitignored)
+├── out/                      # 빌드 부산물 (promtool용 raw rules 등, gitignored)
 │
 ├── manifests/                # 빌드 산출물 — 클러스터에 sync 되는 YAML
 │   ├── prometheus-rules/         # PrometheusRule CR
-│   ├── alertmanager-config/      # AlertmanagerConfig CR
+│   ├── alertmanager-config/      # AlertmanagerConfig CR (4차 PR에서 채움)
 │   └── grafana-dashboards/       # ConfigMap (grafana_dashboard="1" 라벨)
 │
 ├── tests/                    # promtool test rules 입력
 │
-├── tools/                    # 빌드/검증 헬퍼 스크립트
+├── tools/                    # 빌드/검증 헬퍼 스크립트 (build.sh, validate.sh)
+│
+├── e2e/                      # 로컬 kind e2e 골격 (cluster + kube-prometheus-stack)
 │
 ├── docs/
 │   ├── alerting-philosophy.md    # SRE 원칙 — 어떤 알림을 만들/안 만들 것인가
 │   ├── severity-policy.md        # critical/warning 2단계 정책
 │   ├── adding-a-mixin.md         # 외부/자체 mixin 추가 절차
-│   └── runbooks/                 # 알림별 대응 절차서
+│   ├── runbooks/                 # 알림별 대응 절차서
+│   └── learnings/                # 의사결정 노트 (도구 선택 근거 등)
 │
-├── argocd/                   # ArgoCD Application 매니페스트 (다음 PR에서 동작)
+├── argocd/                   # ArgoCD Application 매니페스트 (4차 PR에서 채움)
 │
 └── .github/
     ├── CODEOWNERS
-    └── workflows/ci.yml      # promtool / jsonnet-lint / kubeconform (다음 PR에서 활성화)
+    └── workflows/ci.yml      # build / promtool test / kubeconform
 ```
 
 ## Quick start
-
-> ⚠️ **현재(1차 PR) 상태**: 디렉토리·문서·툴체인 골격만 잡혀 있다. `make build`/`vendor` 등은 stub이며 다음 PR에서 실구현. 아래 흐름은 향후 동작할 모습.
 
 ```bash
 # 1. 의존성 설치 (kubernetes-mixin, grafonnet 등 vendor/로 다운로드)
@@ -64,12 +68,17 @@ make vendor
 # 2. jsonnet → manifests/ 빌드
 make build
 
-# 3. 룰 테스트
+# 3. 룰 테스트 + 매니페스트 스키마 검증
 make test
+make lint
 
 # 4. (ArgoCD가 sync하는 경우) 자동 반영. 수동 적용 시:
 kubectl apply -R -f manifests/
 ```
+
+로컬 kind 클러스터에 올려서 실제 admit 되는지 보고 싶으면 `make e2e-up` (자세한 건 [e2e/README.md](e2e/README.md)).
+
+필요한 도구는 [tools/README.md](tools/README.md) 참고.
 
 ## Concepts
 
@@ -97,23 +106,27 @@ kubectl apply -R -f manifests/
 
 ## Roadmap
 
-### ✅ 1차 PR — 골격 (현재)
+### ✅ 1차 PR — 골격
 - [x] 디렉토리 구조
 - [x] README + 정책 문서 (`docs/`)
 - [x] Makefile / `jsonnetfile.json` / CI workflow stub
 - [x] CODEOWNERS
 
-### 🚧 2차 PR — 동작하는 빌드 파이프라인
-- [ ] `jb install` 실행 + `vendor/` 커밋 정책 결정
-- [ ] Makefile build/test/lint 실구현
-- [ ] CI에서 `promtool test rules` + `kubeconform` 활성화
+### ✅ 2차 PR — 동작하는 빌드 파이프라인 (현재)
+- [x] `jb install` + `jsonnetfile.lock.json` commit (vendor/는 gitignored)
+- [x] Makefile build/test/lint 실구현 (`tools/build.sh` + `tools/validate.sh`)
+- [x] CI에서 `promtool test rules` + `kubeconform` 활성화
+- [x] 외부 mixin 1개(kubernetes-mixin) wrap — 빌드 동작 증명
+- [x] 로컬 kind e2e 골격 (`e2e/`) — cluster up + manifests apply까지
 
 ### 🚧 3차 PR — 첫 도메인 mixin
 - [ ] `mixins/local/rpc-mixin/` — 블록 헤드/peer/sync 알림 + 패널 1세트
 - [ ] `docs/runbooks/` — RPC 룬북 초안
+- [ ] `e2e/scripts/rpc-mixin.sh` — 더미 exporter 주입 → 알림 발화 단언
 
 ### 🚧 4차 PR — 클러스터 sync
 - [ ] `argocd/` Application 매니페스트
+- [ ] AlertmanagerConfig 렌더링 + `amtool config routes test`
 - [ ] 테스트 클러스터에서 ConfigMap sidecar 픽업 검증
 - [ ] Slack/PagerDuty receiver 연결 (Secret은 SealedSecret/SOPS로 별도 repo)
 

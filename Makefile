@@ -1,30 +1,36 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: help vendor build test lint clean
+.PHONY: help all vendor build test lint clean e2e-up e2e-verify e2e-down
 
 help: ## Show available targets
-	@echo "o11y — observability-as-code"
-	@echo ""
-	@echo "Targets (1차 PR 시점에는 stub — 다음 PR에서 실구현):"
-	@echo "  vendor    Install jsonnet dependencies (jb install)"
-	@echo "  build     Compile jsonnet → manifests/"
-	@echo "  test      Run promtool test rules"
-	@echo "  lint      Run jsonnet-lint and kubeconform"
-	@echo "  clean     Remove out/ build artifacts"
-	@echo "  help      Show this message"
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
+	  | awk -F':.*?## ' '{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-vendor: ## Install jsonnet dependencies
-	@echo "[stub] TODO: jb install — implement in next PR"
+all: vendor build test lint ## vendor → build → test → lint
 
-build: vendor ## Compile jsonnet to manifests/
-	@echo "[stub] TODO: jsonnet → manifests/{prometheus-rules,alertmanager-config,grafana-dashboards}/ — implement in next PR"
+vendor: ## Install jsonnet dependencies (jb install → vendor/)
+	jb install
+	@touch vendor/.jb-stamp
 
-test: ## Run promtool tests on generated rules
-	@echo "[stub] TODO: promtool test rules tests/*.yaml — implement in next PR"
+build: ## Compile jsonnet → manifests/
+	bash tools/build.sh
 
-lint: ## Lint jsonnet sources and generated manifests
-	@echo "[stub] TODO: jsonnet-lint mixins/ && kubeconform manifests/ — implement in next PR"
+test: build ## Run promtool test rules
+	bash tools/validate.sh test
+
+lint: build ## Run kubeconform on manifests/
+	bash tools/validate.sh lint
 
 clean: ## Remove build artifacts
-	rm -rf out/
-	@echo "cleaned out/"
+	rm -rf manifests/prometheus-rules manifests/grafana-dashboards out/
+	@mkdir -p manifests/prometheus-rules manifests/grafana-dashboards
+	@echo "cleaned manifests/{prometheus-rules,grafana-dashboards} + out/"
+
+e2e-up: ## Bring up kind cluster + kube-prometheus-stack
+	bash e2e/scripts/cluster.sh setup
+
+e2e-verify: ## Verify kind cluster + manifests applied
+	bash e2e/scripts/cluster.sh verify
+
+e2e-down: ## Tear down kind cluster
+	bash e2e/scripts/cluster.sh teardown

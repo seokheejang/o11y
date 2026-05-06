@@ -1,5 +1,6 @@
 vendor/
 out/
+e2e/.kubeconfig
 .DS_Store
 *.tmp
 *.swp

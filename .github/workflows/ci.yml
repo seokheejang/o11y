@@ -2,22 +2,61 @@ name: CI
 
 on:
   pull_request:
-  # main push 트리거는 실제 검증이 추가되는 다음 PR에서 활성화한다.
-  # 지금은 stub job이라 실행해도 의미 없음.
+  push:
+    branches: [main]
 
 jobs:
   validate:
-    name: validate (stub)
+    name: build / test / lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Stub — TODO in next PR
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Install jsonnet toolchain
         run: |
-          echo "[stub] CI not yet implemented."
-          echo "Next PR will add:"
-          echo "  - jb install (cached)"
-          echo "  - make build  (jsonnet → manifests/)"
-          echo "  - make test   (promtool test rules)"
-          echo "  - make lint   (jsonnet-lint + kubeconform)"
-          echo "  - PR comment with diff of generated manifests"
+          go install github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+          go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
+          go install github.com/brancz/gojsontoyaml@latest
+
+      - name: Install yq
+        run: |
+          sudo curl -sL -o /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Cache jsonnet vendor
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: vendor-${{ hashFiles('jsonnetfile.lock.json') }}
+          restore-keys: vendor-
+
+      - name: jb install
+        run: jb install
+
+      - name: Install promtool
+        run: |
+          curl -sL https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-amd64.tar.gz \
+            | tar xz -C /tmp
+          sudo mv /tmp/prometheus-2.55.1.linux-amd64/promtool /usr/local/bin/
+
+      - name: Install kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /tmp
+          sudo mv /tmp/kubeconform /usr/local/bin/
+
+      - run: make build
+      - run: make test
+      - run: make lint
+
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifests
+          path: manifests/
