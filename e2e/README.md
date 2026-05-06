@@ -47,7 +47,8 @@ e2e/
 - Kind 클러스터 + 노드 Ready
 - kube-prometheus-stack 컴포넌트 (Prometheus, Grafana, operator) 배포
 - `manifests/prometheus-rules/kubernetes.yaml`이 `PrometheusRule`로 admit
-- `manifests/grafana-dashboards/`의 ConfigMap이 `grafana_dashboard=1` 라벨로 적용 → Grafana sidecar가 픽업
+
+> **대시보드 분담 정책**: 외부 mixin(`kubernetes-mixin`)의 대시보드는 `kube-prometheus-stack` 차트가 동일 출처에서 생성한다(중복 방지). 우리 `manifests/grafana-dashboards/`는 **자체 mixin**(3차 PR `rpc-mixin` 등)의 도메인 대시보드만 담는다.
 
 ## UI 접근
 

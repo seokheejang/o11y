@@ -143,7 +143,8 @@ cmd_verify() {
     echo ""
     echo "o11y manifests:"
     check "PrometheusRule applied"     "kubectl get prometheusrule -n ${MONITORING_NAMESPACE} kubernetes"
-    check "Dashboard ConfigMaps applied" "test \$(kubectl get cm -n ${MONITORING_NAMESPACE} -l grafana_dashboard=1 -o name 2>/dev/null | wc -l) -gt 0"
+    # 대시보드는 자체 mixin(3차 PR rpc-mixin 등)에서만 만든다 — 외부 kubernetes-mixin
+    # 대시보드는 kube-prometheus-stack 차트가 디폴트로 동일 출처를 import하므로 중복 회피.
 
     echo ""
     echo "-------------------------------------------"

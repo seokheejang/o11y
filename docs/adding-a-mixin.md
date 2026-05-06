@@ -6,6 +6,8 @@
 
 [monitoring.mixins.dev](https://monitoring.mixins.dev/)에서 원하는 mixin을 찾아 `jsonnetfile.json`에 의존성을 추가한다.
 
+> **외부 mixin은 rules만 가져온다.** 대시보드는 `kube-prometheus-stack` 차트가 동일 mixin 출처에서 디폴트로 ConfigMap을 만들어주므로 중복 회피. (자체 mixin은 rules + dashboards 모두 가져온다.)
+
 ### 예: node-exporter mixin 추가
 
 ```bash
@@ -27,7 +29,7 @@ jb install github.com/prometheus/node_exporter/docs/node-mixin@master
 }
 ```
 
-`make build`가 이 mixin의 알림/대시보드를 `manifests/` 아래로 렌더링한다.
+`mixins/main.libsonnet`에 추가하면 `make build`가 이 mixin의 알림/레코딩 룰을 `manifests/prometheus-rules/`에 렌더링한다.
 
 ## 자체 mixin 추가하기
 
