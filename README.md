@@ -62,7 +62,11 @@ Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://git
 ## Quick start
 
 ```bash
-# 1. 의존성 설치 (kubernetes-mixin, grafonnet 등 vendor/로 다운로드)
+# 0. 도구 설치 (jsonnet/jb/gojsontoyaml/promtool/kubeconform/yq/kind/helm/kubectl)
+tools/install.sh                    # 전체 설치 (멱등)
+tools/install.sh --check            # 설치 상태만 점검
+
+# 1. mixin 의존성 다운로드 → vendor/
 make vendor
 
 # 2. jsonnet → manifests/ 빌드
@@ -78,7 +82,7 @@ kubectl apply -R -f manifests/
 
 로컬 kind 클러스터에 올려서 실제 admit 되는지 보고 싶으면 `make e2e-up` (자세한 건 [e2e/README.md](e2e/README.md)).
 
-필요한 도구는 [tools/README.md](tools/README.md) 참고.
+도구 버전 핀과 설치 경로 상세는 [tools/README.md](tools/README.md) 참고.
 
 ## Concepts
 
