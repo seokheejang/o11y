@@ -19,8 +19,13 @@
       coreDNSp99LatencySeconds: 1,
       coreDNSErrorRatio: 0.05,
       ingress5xxRatio: 0.05,
+      ingress4xxRatio: 0.05,            // 4xx 급증 — 인증/route 깨짐 (배포 직후 빈발)
+      ingress4xxMinReqPerSec: 1,        // 최소 트래픽 요건 — 저트래픽 false positive 차단
       diskSaturationRatio: 0.9,
-      oomKillRate5m: 3,  // 5분 동안 OOM 3건 이상이면 critical
+      oomKillRate5m: 3,                 // 5분 동안 OOM 3건 이상이면 critical
+      podRestart1h: 5,                  // 1시간 내 재시작 횟수
+      conntrackUsageRatio: 0.8,         // conntrack 80% 이상 — Preply/loveholidays 직접 원인
+      nodeNetErrorRate: 0.01,           // NIC errors+drops > 0.01/s
     },
   },
 }

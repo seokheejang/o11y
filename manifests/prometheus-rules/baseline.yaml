@@ -55,6 +55,21 @@ spec:
       for: 10m
       labels:
         severity: warning
+    - alert: HighIngress4xxRate
+      annotations:
+        description: 4xx ratio is {{ $value | humanizePercentage }} for the last 10m. Often indicates auth/route misconfig after deploy.
+        summary: Ingress {{ $labels.namespace }}/{{ $labels.ingress }} 4xx ratio > 5%.
+      expr: |
+        sum by (ingress, namespace) (rate(nginx_ingress_controller_requests{status=~"4.."}[5m]))
+          /
+        sum by (ingress, namespace) (rate(nginx_ingress_controller_requests[5m]))
+          > 0.050000000000000003
+        and
+        sum by (ingress, namespace) (rate(nginx_ingress_controller_requests[5m]))
+          > 1
+      for: 10m
+      labels:
+        severity: warning
   - name: baseline-dns
     rules:
     - alert: CoreDNSDown
@@ -115,6 +130,79 @@ spec:
         description: I/O time ratio is {{ $value | humanizePercentage }} for the last 15m.
         summary: Disk {{ $labels.device }} on {{ $labels.instance }} > 90% saturated.
       expr: rate(node_disk_io_time_seconds_total[5m]) > 0.90000000000000002
+      for: 15m
+      labels:
+        severity: warning
+    - alert: PodRestartingTooOften
+      annotations:
+        description: Container {{ $labels.container }} restarting repeatedly. Investigate before it CrashLoops.
+        summary: Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted > 5 times in last 1h.
+      expr: |
+        increase(kube_pod_container_status_restarts_total{job="kube-state-metrics"}[1h])
+          > 5
+      for: 15m
+      labels:
+        severity: warning
+    - alert: WorkloadRolloutStuck
+      annotations:
+        description: Generation mismatch or replicas-available shortfall persisted for 30m. Likely failed rollout.
+        summary: Deployment {{ $labels.namespace }}/{{ $labels.deployment }} rollout stuck > 30m.
+      expr: |
+        kube_deployment_status_observed_generation{job="kube-state-metrics"}
+          != kube_deployment_metadata_generation{job="kube-state-metrics"}
+        or
+        (
+          kube_deployment_spec_replicas{job="kube-state-metrics"}
+            != kube_deployment_status_replicas_available{job="kube-state-metrics"}
+        )
+      for: 30m
+      labels:
+        severity: warning
+    - alert: JobFailedNonCron
+      annotations:
+        description: A non-cron Job has failed. CronJob retry noise is excluded by owner_kind filter.
+        summary: Job {{ $labels.namespace }}/{{ $labels.job_name }} failed (non-cron).
+      expr: |
+        kube_job_status_failed{job="kube-state-metrics"} > 0
+        unless on (job_name, namespace)
+        kube_job_owner{job="kube-state-metrics", owner_kind="CronJob"}
+      for: 5m
+      labels:
+        severity: warning
+    - alert: ServiceEndpointsEmpty
+      annotations:
+        description: No ready endpoints for 10m. Selector mismatch, no pods, or readiness all failing.
+        summary: Service {{ $labels.namespace }}/{{ $labels.endpoint }} has 0 endpoints.
+      expr: |
+        kube_endpoint_address_available{job="kube-state-metrics", namespace!~"kube-system|kube-public|kube-node-lease"} == 0
+      for: 10m
+      labels:
+        severity: warning
+  - name: baseline-node
+    rules:
+    - alert: NodeConntrackNearLimit
+      annotations:
+        description: Conntrack usage at {{ $value | humanizePercentage }}. Risk of new connection drops.
+        runbook_url: https://github.com/seokheejang/o11y/blob/main/docs/runbooks/NodeConntrackNearLimit.md
+        summary: Node {{ $labels.instance }} conntrack table > 80% full.
+      expr: |
+        node_nf_conntrack_entries{job="node-exporter"}
+          /
+        node_nf_conntrack_entries_limit{job="node-exporter"}
+          > 0.80000000000000004
+      for: 10m
+      labels:
+        severity: critical
+    - alert: NodeNetworkErrorsHigh
+      annotations:
+        description: Sustained NIC errors or drops for 15m. Check driver, hardware, or upstream switch.
+        summary: Node {{ $labels.instance }} network errors/drops on {{ $labels.device }} > 0.01/s.
+      expr: |
+        rate(node_network_receive_errs_total{job="node-exporter"}[5m])
+          + rate(node_network_receive_drop_total{job="node-exporter"}[5m])
+          + rate(node_network_transmit_errs_total{job="node-exporter"}[5m])
+          + rate(node_network_transmit_drop_total{job="node-exporter"}[5m])
+          > 0.01
       for: 15m
       labels:
         severity: warning
