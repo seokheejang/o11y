@@ -1,0 +1,120 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: o11y
+    prometheus: kube-prometheus
+    role: alert-rules
+  name: baseline
+  namespace: monitoring
+spec:
+  groups:
+  - name: baseline-meta
+    rules:
+    - alert: PrometheusRuleFailures
+      annotations:
+        description: '{{ $labels.instance }} has rule eval failures in the last 5m. Other alerts may not fire.'
+        runbook_url: https://github.com/seokheejang/o11y/blob/main/docs/runbooks/PrometheusRuleFailures.md
+        summary: Prometheus rule evaluation failing — alerting itself is degraded.
+      expr: increase(prometheus_rule_evaluation_failures_total[5m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+    - alert: AlertmanagerConfigInconsistent
+      annotations:
+        description: Alertmanager service {{ $labels.service }} has inconsistent config across replicas. Risk of duplicate or missed notifications.
+        runbook_url: https://github.com/seokheejang/o11y/blob/main/docs/runbooks/AlertmanagerConfigInconsistent.md
+        summary: Alertmanager HA replicas have divergent configs.
+      expr: |
+        count by (service, cluster) (
+          count_values by (service, cluster) ("config_hash", alertmanager_config_hash{job=~"alertmanager-main|kps-kube-prometheus-stack-alertmanager"})
+        ) > 1
+      for: 10m
+      labels:
+        severity: critical
+  - name: baseline-network
+    rules:
+    - alert: IngressControllerDown
+      annotations:
+        description: No ingress controller targets are up. All external traffic via this controller fails.
+        runbook_url: https://github.com/seokheejang/o11y/blob/main/docs/runbooks/IngressControllerDown.md
+        summary: Ingress controller is down — north-south traffic blocked.
+      expr: absent(up{job=~"ingress-nginx-controller-metrics|nginx-ingress.*"} == 1)
+      for: 5m
+      labels:
+        severity: critical
+    - alert: HighIngress5xxRate
+      annotations:
+        description: 5xx ratio is {{ $value | humanizePercentage }} for the last 10m.
+        summary: Ingress {{ $labels.namespace }}/{{ $labels.ingress }} 5xx ratio > 5%.
+      expr: |
+        sum by (ingress, namespace) (rate(nginx_ingress_controller_requests{status=~"5.."}[5m]))
+          /
+        sum by (ingress, namespace) (rate(nginx_ingress_controller_requests[5m]))
+          > 0.050000000000000003
+      for: 10m
+      labels:
+        severity: warning
+  - name: baseline-dns
+    rules:
+    - alert: CoreDNSDown
+      annotations:
+        description: CoreDNS targets absent for 5m. All in-cluster DNS resolution affected.
+        runbook_url: https://github.com/seokheejang/o11y/blob/main/docs/runbooks/CoreDNSDown.md
+        summary: CoreDNS is down — service discovery broken.
+      expr: absent(up{job=~"kube-dns|coredns"} == 1)
+      for: 5m
+      labels:
+        severity: critical
+    - alert: CoreDNSLatencyHigh
+      annotations:
+        description: p99 latency is {{ $value }}s for the last 10m.
+        summary: CoreDNS p99 latency > 1s.
+      expr: |
+        histogram_quantile(0.99, sum by (le) (rate(coredns_dns_request_duration_seconds_bucket[5m])))
+          > 1
+      for: 10m
+      labels:
+        severity: warning
+    - alert: CoreDNSErrorsHigh
+      annotations:
+        description: Error ratio is {{ $value | humanizePercentage }} for the last 10m.
+        summary: CoreDNS SERVFAIL/REFUSED ratio > 5%.
+      expr: |
+        sum(rate(coredns_dns_responses_total{rcode=~"SERVFAIL|REFUSED"}[5m]))
+          /
+        sum(rate(coredns_dns_responses_total[5m]))
+          > 0.050000000000000003
+      for: 10m
+      labels:
+        severity: warning
+  - name: baseline-workload
+    rules:
+    - alert: HighOOMKillRate
+      annotations:
+        description: '{{ $value }} OOMKills in the last 5m. Indicates memory pressure or limit misconfiguration.'
+        runbook_url: https://github.com/seokheejang/o11y/blob/main/docs/runbooks/HighOOMKillRate.md
+        summary: High OOMKill rate cluster-wide.
+      expr: sum(increase(container_oom_events_total[5m])) > 3
+      for: 5m
+      labels:
+        severity: critical
+    - alert: HighImagePullBackOff
+      annotations:
+        description: Image pull failing for 15m. Check registry credentials or image tag.
+        summary: Pod {{ $labels.namespace }}/{{ $labels.pod }} stuck in ImagePullBackOff.
+      expr: |
+        sum by (namespace, pod) (
+          max_over_time(kube_pod_container_status_waiting_reason{reason="ImagePullBackOff", job="kube-state-metrics"}[15m])
+        ) > 0
+      for: 15m
+      labels:
+        severity: warning
+    - alert: HighDiskSaturation
+      annotations:
+        description: I/O time ratio is {{ $value | humanizePercentage }} for the last 15m.
+        summary: Disk {{ $labels.device }} on {{ $labels.instance }} > 90% saturated.
+      expr: rate(node_disk_io_time_seconds_total[5m]) > 0.90000000000000002
+      for: 15m
+      labels:
+        severity: warning

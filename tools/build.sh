@@ -28,7 +28,7 @@ if [[ ! -f vendor/.jb-stamp ]] || [[ jsonnetfile.lock.json -nt vendor/.jb-stamp 
     touch vendor/.jb-stamp
 fi
 
-OUT_DIRS=(prometheus-rules grafana-dashboards)
+OUT_DIRS=(prometheus-rules prometheus-rules-meta grafana-dashboards)
 
 echo "[build] clean manifests/{$(IFS=,; echo "${OUT_DIRS[*]}")}"
 for d in "${OUT_DIRS[@]}"; do

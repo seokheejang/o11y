@@ -1,0 +1,94 @@
+# Negative test — disable한 7개 알림이 빌드 산출물에서 정의되지 않았는지 확인.
+# 발화 조건을 충족하는 input_series를 줘도 alert_rule_test의 exp_alerts가 빈 배열([])이어야 한다.
+# 만약 disable이 풀리면 promtool이 발화를 감지하고 이 테스트가 fail한다.
+#
+# disable 근거: docs/baseline-alerts.md #3, mixins/main.libsonnet의 k8sDisabledAlerts 코멘트.
+
+rule_files:
+  - ../out/prometheus-rules-raw/kubernetes.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # 1) CPUThrottlingHigh — kubernetes-mixin#108 (false positive)
+  - interval: 1m
+    name: CPUThrottlingHigh is disabled (kubernetes-mixin#108)
+    input_series:
+      - series: 'container_cpu_cfs_throttled_periods_total{container="c", namespace="ns", pod="p"}'
+        values: '0+10x30'
+      - series: 'container_cpu_cfs_periods_total{container="c", namespace="ns", pod="p"}'
+        values: '0+10x30'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: CPUThrottlingHigh
+        exp_alerts: []
+
+  # 2) KubeHpaMaxedOut — kubernetes-mixin#1193 (minReplicas==maxReplicas FP)
+  - interval: 1m
+    name: KubeHpaMaxedOut is disabled (kubernetes-mixin#1193)
+    input_series:
+      - series: 'kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler="hpa", namespace="ns"}'
+        values: '5x20'
+      - series: 'kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler="hpa", namespace="ns"}'
+        values: '5x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KubeHpaMaxedOut
+        exp_alerts: []
+
+  # 3) KubeAPIErrorBudgetBurn — kube-prometheus#1480 (metric definition flaw)
+  - interval: 1m
+    name: KubeAPIErrorBudgetBurn is disabled (kube-prometheus#1480)
+    input_series:
+      - series: 'apiserver_request:burnrate1h'
+        values: '1x20'
+      - series: 'apiserver_request:burnrate5m'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KubeAPIErrorBudgetBurn
+        exp_alerts: []
+
+  # 4) KubeProxyDown — kube-prometheus#1602 (PodMonitor default OFF, always firing)
+  - interval: 1m
+    name: KubeProxyDown is disabled (kube-prometheus#1602)
+    input_series:
+      - series: 'up{job="kubelet"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: KubeProxyDown
+        exp_alerts: []
+
+  # 5) KubeJobFailed — CronJob retry 노이즈
+  - interval: 1m
+    name: KubeJobFailed is disabled (CronJob retry noise)
+    input_series:
+      - series: 'kube_job_failed{job_name="batch-1", namespace="ns"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KubeJobFailed
+        exp_alerts: []
+
+  # 6) KubeContainerWaiting — startup 잠시 waiting은 정상
+  - interval: 1m
+    name: KubeContainerWaiting is disabled (startup waiting is normal)
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{container="c", namespace="ns", pod="p"}'
+        values: '1x70'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: KubeContainerWaiting
+        exp_alerts: []
+
+  # 7) KubePodNotScheduled — KubePodNotReady와 신호 중복
+  - interval: 1m
+    name: KubePodNotScheduled is disabled (overlaps KubePodNotReady)
+    input_series:
+      - series: 'kube_pod_status_scheduled{condition="false", namespace="ns", pod="p"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: KubePodNotScheduled
+        exp_alerts: []

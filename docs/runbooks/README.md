@@ -14,9 +14,25 @@
 
 ## 룬북 인덱스
 
-다음 PR부터 자체 mixin이 추가되면 해당 알림별 룬북이 여기 채워진다.
+알림 추가/변경 PR에서 이 인덱스도 함께 업데이트한다.
 
-자체 mixin이 추가되는 PR마다 이 인덱스도 업데이트한다.
+### 외부 mixin (kubernetes-mixin) critical
+- [KubeAPIDown](KubeAPIDown.md)
+- [KubeNodeNotReady](KubeNodeNotReady.md)
+- [KubeletDown](KubeletDown.md)
+- [KubePersistentVolumeFillingUp](KubePersistentVolumeFillingUp.md)
+- [KubePersistentVolumeErrors](KubePersistentVolumeErrors.md)
+- [KubeClientCertificateExpiration](KubeClientCertificateExpiration.md)
+- [KubeletClientCertificateExpiration](KubeletClientCertificateExpiration.md)
+
+### 자체 baseline-mixin critical
+- [PrometheusRuleFailures](PrometheusRuleFailures.md) — 메타 알림
+- [AlertmanagerConfigInconsistent](AlertmanagerConfigInconsistent.md)
+- [IngressControllerDown](IngressControllerDown.md)
+- [CoreDNSDown](CoreDNSDown.md)
+- [HighOOMKillRate](HighOOMKillRate.md)
+
+> 룬북은 모두 stub 상태. 실 사고 발생 시 진단·완화 노하우를 채워가는 것이 운영 표준 절차이다.
 
 ## 템플릿
 

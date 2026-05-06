@@ -22,9 +22,9 @@ lint: build ## Run kubeconform on manifests/
 	bash tools/validate.sh lint
 
 clean: ## Remove build artifacts
-	rm -rf manifests/prometheus-rules manifests/grafana-dashboards out/
+	rm -rf manifests/prometheus-rules manifests/prometheus-rules-meta manifests/grafana-dashboards out/
 	@mkdir -p manifests/prometheus-rules manifests/grafana-dashboards
-	@echo "cleaned manifests/{prometheus-rules,grafana-dashboards} + out/"
+	@echo "cleaned manifests/{prometheus-rules,prometheus-rules-meta,grafana-dashboards} + out/"
 
 e2e-up: ## Bring up kind cluster + kube-prometheus-stack
 	bash e2e/scripts/cluster.sh setup

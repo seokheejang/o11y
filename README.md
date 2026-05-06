@@ -116,17 +116,30 @@ kubectl apply -R -f manifests/
 - [x] Makefile / `jsonnetfile.json` / CI workflow stub
 - [x] CODEOWNERS
 
-### ✅ 2차 PR — 동작하는 빌드 파이프라인 (현재)
+### ✅ 2차 PR — 동작하는 빌드 파이프라인
 - [x] `jb install` + `jsonnetfile.lock.json` commit (vendor/는 gitignored)
 - [x] Makefile build/test/lint 실구현 (`tools/build.sh` + `tools/validate.sh`)
 - [x] CI에서 `promtool test rules` + `kubeconform` 활성화
 - [x] 외부 mixin 1개(kubernetes-mixin) wrap — 빌드 동작 증명
 - [x] 로컬 kind e2e 골격 (`e2e/`) — cluster up + manifests apply까지
 
+### ✅ 베이스라인 PR — 운영 알림 베이스라인 (현재)
+- [x] kubernetes-mixin noisy 7개 disable (`mixins/main.libsonnet` 코멘트에 근거 issue 링크)
+- [x] 자체 `mixins/local/baseline-mixin/` — critical 5 + warning 5
+- [x] `mixins/lib/transform.libsonnet` — disable / severity / runbook 정책 강제
+- [x] cert-manager mixin import wrap stub (디폴트 OFF)
+- [x] critical 12개 룬북 stub
+- [x] [docs/baseline-alerts.md](docs/baseline-alerts.md) 의사결정 노트 + 적용 결과
+
 ### 🚧 3차 PR — 첫 도메인 mixin
 - [ ] `mixins/local/rpc-mixin/` — 블록 헤드/peer/sync 알림 + 패널 1세트
-- [ ] `docs/runbooks/` — RPC 룬북 초안
-- [ ] `e2e/scripts/rpc-mixin.sh` — 더미 exporter 주입 → 알림 발화 단언
+- [ ] `docs/runbooks/rpc-*.md` — RPC 룬북 초안
+
+### 🚧 시나리오 e2e PR — 알림 실제 발화 검증
+- [ ] `e2e/scripts/scenarios.sh fire-rule-failure` — 잘못된 PrometheusRule 주입 → API에서 firing 단언
+- [ ] `e2e/scripts/scenarios.sh fire-oom` — stress-ng로 메모리 압박 → HighOOMKillRate 발화
+- [ ] `e2e/scripts/scenarios.sh fire-ingress-down` — ingress controller scale=0 → IngressControllerDown 발화
+- [ ] `e2e/scripts/scenarios.sh fire-pv-failed` — bad StorageClass → KubePersistentVolumeErrors 발화
 
 ### 🚧 4차 PR — 클러스터 sync
 - [ ] `argocd/` Application 매니페스트

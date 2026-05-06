@@ -1,0 +1,42 @@
+apiVersion: v1
+data:
+  violations.json: |-
+    {
+      "criticalMissingRunbook": [
+
+      ],
+      "missingOrInvalidSeverity": [
+        {
+          "alert": "KubeQuotaAlmostFull",
+          "group": "kubernetes-resources",
+          "severity": "info"
+        },
+        {
+          "alert": "KubeQuotaFullyUsed",
+          "group": "kubernetes-resources",
+          "severity": "info"
+        },
+        {
+          "alert": "KubeNodePressure",
+          "group": "kubernetes-system-kubelet",
+          "severity": "info"
+        },
+        {
+          "alert": "KubeletTooManyPods",
+          "group": "kubernetes-system-kubelet",
+          "severity": "info"
+        },
+        {
+          "alert": "KubeNodeEviction",
+          "group": "kubernetes-system-kubelet",
+          "severity": "info"
+        }
+      ]
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/component: policy-report
+    app.kubernetes.io/managed-by: o11y
+  name: o11y-external-policy-report
+  namespace: monitoring
