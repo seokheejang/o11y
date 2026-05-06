@@ -52,14 +52,18 @@ e2e/
 
 ## UI 접근
 
+`make e2e-up` 후 브라우저에서 바로 열린다 — `kubectl port-forward` 불필요.
+
+| UI | URL | 비고 |
+|---|---|---|
+| Prometheus | http://localhost:9090 | rule 평가, target 상태, alert 시뮬레이션 |
+| Grafana | http://localhost:3000 | admin / admin |
+
+원리: `e2e/kind/cluster.yaml`의 `extraPortMappings`가 컨테이너 NodePort 30090/30030을 호스트 9090/3000으로 직접 매핑. `e2e/values/kube-prometheus-stack.yaml`이 prometheus/grafana service를 `NodePort: 30090/30030`으로 핀.
+
+`kubectl`/`helm`을 직접 쓰려면:
 ```bash
 export KUBECONFIG=$PWD/e2e/.kubeconfig
-
-# Prometheus
-kubectl port-forward -n monitoring svc/kps-kube-prometheus-stack-prometheus 9090
-
-# Grafana (admin/admin)
-kubectl port-forward -n monitoring svc/kps-grafana 3000:80
 ```
 
 ## 다음 단계 (참고)

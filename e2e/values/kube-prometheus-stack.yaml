@@ -19,6 +19,11 @@ nodeExporter:
   enabled: false
 
 prometheus:
+  # NodePort + 핀된 nodePort. kind cluster.yaml의 extraPortMappings와 짝 →
+  # 호스트의 http://localhost:9090로 바로 접근 (port-forward 불필요).
+  service:
+    type: NodePort
+    nodePort: 30090
   prometheusSpec:
     retention: 1h
     walCompression: true
@@ -37,6 +42,10 @@ prometheus:
 grafana:
   enabled: true
   adminPassword: admin
+  # NodePort + 핀된 nodePort → 호스트의 http://localhost:3000로 바로 접근.
+  service:
+    type: NodePort
+    nodePort: 30030
   resources:
     requests:
       cpu: 50m

@@ -106,14 +106,12 @@ cmd_setup() {
   KUBECONFIG   : ${E2E_KUBECONFIG}
   Namespace    : ${MONITORING_NAMESPACE}
 
-  Use kubectl/helm:
+  Web UI (kind extraPortMappings 통해 호스트 직결 — port-forward 불필요):
+    Prometheus  : http://localhost:9090
+    Grafana     : http://localhost:3000   (admin/${GRAFANA_PASSWORD})
+
+  kubectl/helm 직접:
     export KUBECONFIG=${E2E_KUBECONFIG}
-
-  Prometheus UI:
-    kubectl port-forward -n ${MONITORING_NAMESPACE} svc/${KPS_RELEASE}-kube-prometheus-stack-prometheus 9090
-
-  Grafana UI (admin/${GRAFANA_PASSWORD}):
-    kubectl port-forward -n ${MONITORING_NAMESPACE} svc/${KPS_RELEASE}-grafana 3000:80
 
   Teardown     : make e2e-down
 ===========================================
