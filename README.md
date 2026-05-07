@@ -32,14 +32,14 @@ Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://git
 │   └── external/                 # 외부 mixin import wrapper (.libsonnet)
 │
 ├── vendor/                   # jb install 결과 (gitignored)
-├── out/                      # 빌드 부산물 (promtool용 raw rules 등, gitignored)
+├── out/                      # 빌드 부산물 (promtool/amtool용 raw 형식, gitignored)
 │
 ├── manifests/                # 빌드 산출물 — 클러스터에 sync 되는 YAML
 │   ├── prometheus-rules/         # PrometheusRule CR
-│   ├── alertmanager-config/      # AlertmanagerConfig CR (4차 PR에서 채움)
+│   ├── alertmanager-config/      # AlertmanagerConfig CR (severity 라우팅 + inhibit_rules)
 │   └── grafana-dashboards/       # ConfigMap (grafana_dashboard="1" 라벨)
 │
-├── tests/                    # promtool test rules 입력
+├── tests/                    # promtool test rules + amtool routing 단언 입력
 │
 ├── tools/                    # 빌드/검증 헬퍼 스크립트 (build.sh, validate.sh)
 │
@@ -62,7 +62,7 @@ Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://git
 ## Quick start
 
 ```bash
-# 0. 도구 설치 (jsonnet/jb/gojsontoyaml/promtool/kubeconform/yq/kind/helm/kubectl)
+# 0. 도구 설치 (jsonnet/jb/gojsontoyaml/promtool/amtool/kubeconform/yq/kind/helm/kubectl)
 tools/install.sh                    # 전체 설치 (멱등)
 tools/install.sh --check            # 설치 상태만 점검
 
@@ -99,6 +99,28 @@ kubectl apply -R -f manifests/
 
 별도 Grafana API 호출/Terraform 없이 **kubectl apply**(또는 ArgoCD sync)만으로 알림과 대시보드가 반영된다.
 
+## Toolchain
+
+빌드/검증 파이프라인이 쓰는 도구들. `tools/install.sh`이 OS/arch 감지해서 한 방에 설치한다 — 자세한 핀 버전·설치 경로는 [tools/README.md](tools/README.md).
+
+| 도구 | 역할 | 본 repo에서의 쓰임 |
+|---|---|---|
+| [`jsonnet`](https://github.com/google/go-jsonnet) | JSON을 코드로 만드는 데이터 템플릿 언어 (Go 구현) | mixin 소스 컴파일 — `mixins/main.libsonnet` → JSON → YAML |
+| [`jb`](https://github.com/jsonnet-bundler/jsonnet-bundler) | jsonnet 의존성 관리자 (npm/cargo 같은 역할) | `jsonnetfile.json`의 외부 mixin을 `vendor/`에 받음 |
+| [`gojsontoyaml`](https://github.com/brancz/gojsontoyaml) | JSON → YAML 변환기 (필드 순서 안정) | jsonnet 출력 → kubectl이 읽는 YAML |
+| [`yq`](https://github.com/mikefarah/yq) | YAML용 jq | PrometheusRule CR에서 `.spec`만 추출해 promtool에 먹임 |
+| [`promtool`](https://github.com/prometheus/prometheus/tree/main/cmd/promtool) | Prometheus 공식 CLI — 룰 검증·테스트 | `tests/*.yaml`의 알림 발화/억제 단언 (회귀 방지) |
+| [`amtool`](https://github.com/prometheus/alertmanager/tree/main/cmd/amtool) | Alertmanager 공식 CLI — 설정·라우팅 검증 | AlertmanagerConfig 문법 검사(`check-config`) + severity 매처가 의도한 receiver로 가는지 단언(`config routes test`) |
+| [`kubeconform`](https://github.com/yannh/kubeconform) | K8s 매니페스트 스키마 검증 (kubeval 후속) | 빌드된 `manifests/`가 K8s 1.x + CRD 스키마와 맞는지 |
+| [`kind`](https://kind.sigs.k8s.io/) | Docker 컨테이너로 띄우는 K8s 클러스터 | `e2e/`에서 kube-prometheus-stack 위에 manifests 배포 검증 |
+| [`helm`](https://helm.sh/) / [`kubectl`](https://kubernetes.io/docs/tasks/tools/) | K8s 표준 도구 | e2e에서 kube-prometheus-stack 차트 설치 + manifests apply |
+
+### 왜 amtool이 별도 도구인가
+
+AlertmanagerConfig CR(`monitoring.coreos.com/v1alpha1`)의 spec은 **raw alertmanager.yml과 필드명이 다르다** (`groupBy` vs `group_by`, `matchers: [{name,value,matchType}]` vs `matchers: ["severity=\"critical\""]` 등). 운영 클러스터의 alertmanager 본체는 raw 형식만 이해하므로 amtool도 raw만 받는다.
+
+본 repo는 jsonnet에서 routing intent 객체를 정의하고 [`mixins/lib/alertmanager.libsonnet`](mixins/lib/alertmanager.libsonnet)이 양쪽으로 변환한다 — 클러스터에 sync되는 CR(`manifests/alertmanager-config/`)과 amtool 검증용 raw(`out/alertmanager-config-raw/`). 이렇게 해야 "라우팅 단언이 통과한 그 라우팅이 클러스터에 들어간다"가 같은 source-of-truth로 보장된다.
+
 ## Policy & Conventions
 
 | 문서 | 내용 |
@@ -131,7 +153,18 @@ kubectl apply -R -f manifests/
 - [x] critical 12개 룬북 stub
 - [x] [docs/baseline-alerts.md](docs/baseline-alerts.md) 의사결정 노트 + 적용 결과
 
-### 🚧 3차 PR — 첫 도메인 mixin
+### 🚧 Alertmanager 라우팅 PR (현재)
+- [x] `mixins/local/baseline-mixin/alertmanager.libsonnet` — severity 기반 routing tree + inhibit_rules
+- [x] `mixins/lib/alertmanager.libsonnet` — CR ↔ raw 변환 (단일 source-of-truth)
+- [x] AlertmanagerConfig CR 렌더링 → `manifests/alertmanager-config/`
+- [x] amtool 통합 — `check-config` + `config routes test` 단언 (`tests/alertmanager-routing.sh`)
+
+### 🚧 클러스터 sync PR — 후속
+- [ ] `argocd/` Application 매니페스트
+- [ ] 테스트 클러스터에서 ConfigMap sidecar 픽업 검증
+- [ ] Slack/PagerDuty receiver 연결 (Secret은 SealedSecret/SOPS로 별도 repo)
+
+### 🚧 첫 도메인 mixin PR
 - [ ] `mixins/local/rpc-mixin/` — 블록 헤드/peer/sync 알림 + 패널 1세트
 - [ ] `docs/runbooks/rpc-*.md` — RPC 룬북 초안
 
@@ -140,12 +173,6 @@ kubectl apply -R -f manifests/
 - [ ] `e2e/scripts/scenarios.sh fire-oom` — stress-ng로 메모리 압박 → HighOOMKillRate 발화
 - [ ] `e2e/scripts/scenarios.sh fire-ingress-down` — ingress controller scale=0 → IngressControllerDown 발화
 - [ ] `e2e/scripts/scenarios.sh fire-pv-failed` — bad StorageClass → KubePersistentVolumeErrors 발화
-
-### 🚧 4차 PR — 클러스터 sync
-- [ ] `argocd/` Application 매니페스트
-- [ ] AlertmanagerConfig 렌더링 + `amtool config routes test`
-- [ ] 테스트 클러스터에서 ConfigMap sidecar 픽업 검증
-- [ ] Slack/PagerDuty receiver 연결 (Secret은 SealedSecret/SOPS로 별도 repo)
 
 ### 🚧 그 이후
 - [ ] `mixins/local/dns-mixin/` (권위 DNS 모니터링)

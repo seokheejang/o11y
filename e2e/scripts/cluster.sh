@@ -140,7 +140,11 @@ cmd_verify() {
 
     echo ""
     echo "o11y manifests:"
-    check "PrometheusRule applied"     "kubectl get prometheusrule -n ${MONITORING_NAMESPACE} kubernetes"
+    check "PrometheusRule (kubernetes) applied" "kubectl get prometheusrule -n ${MONITORING_NAMESPACE} kubernetes"
+    check "PrometheusRule (baseline) applied"   "kubectl get prometheusrule -n ${MONITORING_NAMESPACE} baseline"
+    # AlertmanagerConfig CR — operator가 watch하여 alertmanager.yml로 컴파일.
+    # admit만 확인 (실제 라우팅 작동은 amtool로 빌드 시 검증됨).
+    check "AlertmanagerConfig admitted"         "kubectl get alertmanagerconfig -n ${MONITORING_NAMESPACE} baseline"
     # 대시보드는 자체 mixin(3차 PR rpc-mixin 등)에서만 만든다 — 외부 kubernetes-mixin
     # 대시보드는 kube-prometheus-stack 차트가 디폴트로 동일 출처를 import하므로 중복 회피.
 

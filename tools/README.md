@@ -16,8 +16,8 @@ make all                      # vendor → build → test → lint
 | 스크립트 | 역할 |
 |---|---|
 | `install.sh` | 빌드/검증/e2e 도구 일괄 설치. macOS/Linux 모두 지원 |
-| `build.sh` | `mixins/main.libsonnet` → `manifests/{prometheus-rules,grafana-dashboards}/*.yaml`. [kube-prometheus build.sh](https://github.com/prometheus-operator/kube-prometheus/blob/main/build.sh) 패턴 (`jsonnet -m` + `gojsontoyaml`). `out/prometheus-rules-raw/`도 생성 — promtool은 PrometheusRule CR을 못 읽으므로 `.spec`만 추출 |
-| `validate.sh` | `validate.sh test`(promtool) / `validate.sh lint`(kubeconform) / `validate.sh all` |
+| `build.sh` | `mixins/main.libsonnet` → `manifests/{prometheus-rules,grafana-dashboards,alertmanager-config}/*.yaml`. [kube-prometheus build.sh](https://github.com/prometheus-operator/kube-prometheus/blob/main/build.sh) 패턴 (`jsonnet -m` + `gojsontoyaml`). `out/prometheus-rules-raw/`도 생성 — promtool은 PrometheusRule CR을 못 읽으므로 `.spec`만 추출. `out/alertmanager-config-raw/`도 생성 — amtool은 raw alertmanager.yml만 받으므로 같은 routing 객체에서 변환 |
+| `validate.sh` | `validate.sh test`(promtool + amtool) / `validate.sh lint`(kubeconform) / `validate.sh all` |
 
 Makefile에서 모두 wrapping 됨 (`make build` / `make test` / `make lint`).
 
@@ -45,8 +45,9 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 | 도구 | 출처 | 핀 |
 |---|---|---|
 | `promtool` | [Prometheus releases](https://github.com/prometheus/prometheus/releases) | `v2.55.1` |
+| `amtool` | [Alertmanager releases](https://github.com/prometheus/alertmanager/releases) | `v0.27.0` |
 
-`brew install prometheus`는 데몬까지 끌려와 무거우므로 **tarball에서 `promtool` 바이너리만 빼서** 설치한다. install.sh가 OS/arch 자동 감지(`darwin/arm64`, `darwin/amd64`, `linux/amd64`, `linux/arm64`).
+`brew install prometheus`는 데몬까지 끌려와 무거우므로 **tarball에서 `promtool` 바이너리만 빼서** 설치한다. amtool은 brew formula가 없고 alertmanager 본체 tarball에 함께 들어있어 같은 방식으로 추출. install.sh가 OS/arch 자동 감지(`darwin/arm64`, `darwin/amd64`, `linux/amd64`, `linux/arm64`).
 
 ### Native 도구 — brew (macOS) / 직접 다운로드 (Linux)
 
@@ -65,6 +66,7 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 - **`jb`, `gojsontoyaml`** — brew formula 없음 → `go install` 외 선택지 없음
 - **`jsonnet`** — brew는 C++ 구현(`google/jsonnet`). 우린 Go 구현(`google/go-jsonnet` v0.20). monitoring-mixins 생태계가 go-jsonnet 표준 — `go install`이 정합
 - **`promtool`** — brew formula `prometheus`는 서버 데몬까지 — 무거움. tarball이 깔끔
+- **`amtool`** — brew formula 없음 (alertmanager 본체도 brew 미지원). 공식 alertmanager tarball에서 binary 추출이 표준 방식
 - **`kubeconform`/`yq`/`kind`/`helm`/`kubectl`** — brew/공식 패키지가 가장 잘 관리됨
 
 ## CI 환경

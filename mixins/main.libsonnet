@@ -1,15 +1,18 @@
 // 빌드 진입점. tools/build.sh가 jsonnet -m으로 호출.
 // top-level object의 키 이름이 곧 manifests/ 아래 산출 경로가 된다.
-//   ['prometheus-rules/<name>']      -> manifests/prometheus-rules/<name>.yaml
-//   ['prometheus-rules-meta/<name>'] -> manifests/prometheus-rules-meta/<name>.yaml  (정책 위반 가시화 ConfigMap)
-//   ['grafana-dashboards/<name>']    -> manifests/grafana-dashboards/<name>.yaml
+//   ['prometheus-rules/<name>']        -> manifests/prometheus-rules/<name>.yaml
+//   ['prometheus-rules-meta/<name>']   -> manifests/prometheus-rules-meta/<name>.yaml  (정책 위반 가시화 ConfigMap)
+//   ['grafana-dashboards/<name>']      -> manifests/grafana-dashboards/<name>.yaml
+//   ['alertmanager-config/<name>']     -> manifests/alertmanager-config/<name>.yaml    (AlertmanagerConfig CR)
+//   ['alertmanager-config-raw/<name>'] -> out/alertmanager-config-raw/<name>.yaml      (amtool 입력용 raw)
 //
 // 외부 mixin은 **rules만** 가져온다. 대시보드는 kube-prometheus-stack 차트가
 // 디폴트로 같은 mixin 출처의 ConfigMap을 만들어주므로 중복 회피.
-// 자체 mixin(mixins/local/*-mixin/)은 rules + dashboards를 모두 가져온다.
+// 자체 mixin(mixins/local/*-mixin/)은 rules + dashboards + alertmanager 라우팅을 모두 가져온다.
 
 local wrappers = import 'lib/wrappers.libsonnet';
 local transform = import 'lib/transform.libsonnet';
+local amlib = import 'lib/alertmanager.libsonnet';
 
 // === 외부 mixin: kubernetes-mixin (rules only) ===
 local k8s = import 'external/kubernetes.libsonnet';
@@ -111,4 +114,23 @@ local lintLocal(groups) =
   for entry in localMixins
   if std.objectHasAll(entry.m, 'grafanaDashboards')
   for name in std.objectFields(entry.m.grafanaDashboards)
+}
++ {
+  // 자체 mixin → 도메인별 AlertmanagerConfig CR (kubectl apply 대상).
+  ['alertmanager-config/' + entry.name]: wrappers.wrapAlertmanagerConfig(
+    name=entry.name,
+    route=entry.m.alertmanagerConfig.route,
+    receivers=entry.m.alertmanagerConfig.receivers,
+    inhibitRules=entry.m.alertmanagerConfig.inhibitRules,
+  )
+  for entry in localMixins
+  if std.objectHasAll(entry.m, 'alertmanagerConfig')
+}
++ {
+  // 자체 mixin → raw alertmanager.yml 부산물 (amtool 검증용, 클러스터에 sync되지 않음).
+  // tools/build.sh가 이 키를 보고 out/alertmanager-config-raw/로 옮긴다.
+  ['alertmanager-config-raw/' + entry.name]:
+    amlib.toRawConfig(entry.m.alertmanagerConfig)
+  for entry in localMixins
+  if std.objectHasAll(entry.m, 'alertmanagerConfig')
 }

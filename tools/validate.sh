@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# tools/validate.sh — promtool + kubeconform 일괄 실행.
+# tools/validate.sh — promtool + kubeconform + amtool 일괄 실행.
 # Usage:
-#   tools/validate.sh test    # promtool test rules tests/*.yaml
+#   tools/validate.sh test    # promtool test rules + amtool routing test
 #   tools/validate.sh lint    # kubeconform on manifests/
 #   tools/validate.sh all     # test + lint
 #
-# 빌드 의존: tools/build.sh가 먼저 manifests/ + out/prometheus-rules-raw/ 생성.
+# 빌드 의존: tools/build.sh가 먼저 manifests/ + out/prometheus-rules-raw/
+#            + out/alertmanager-config-raw/ 생성.
 
 set -euo pipefail
 
@@ -21,14 +22,26 @@ run_test() {
     require promtool
     if ! ls tests/*.yaml >/dev/null 2>&1; then
         echo "[test] no tests/*.yaml — skipping"
+    else
+        if [[ ! -d out/prometheus-rules-raw ]]; then
+            echo "[error] out/prometheus-rules-raw/ missing — run 'make build' first" >&2
+            exit 1
+        fi
+        echo "[test] promtool test rules tests/*.yaml"
+        (cd tests && promtool test rules ./*.yaml)
+    fi
+    run_amtool
+}
+
+run_amtool() {
+    # amtool: alertmanager config 문법 검증 + 라우팅 단언.
+    if ! ls out/alertmanager-config-raw/*.yaml >/dev/null 2>&1; then
+        echo "[test] no out/alertmanager-config-raw/*.yaml — skipping amtool"
         return 0
     fi
-    if [[ ! -d out/prometheus-rules-raw ]]; then
-        echo "[error] out/prometheus-rules-raw/ missing — run 'make build' first" >&2
-        exit 1
-    fi
-    echo "[test] promtool test rules tests/*.yaml"
-    (cd tests && promtool test rules ./*.yaml)
+    require amtool
+    echo "[test] amtool routing assertions (tests/alertmanager-routing.sh)"
+    bash tests/alertmanager-routing.sh
 }
 
 run_lint() {

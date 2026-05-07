@@ -21,6 +21,7 @@ JSONNET_VERSION="v0.20.0"
 JB_VERSION="v0.6.0"
 GOJSONTOYAML_VERSION="latest"
 PROMTOOL_VERSION="2.55.1"
+ALERTMANAGER_VERSION="0.27.0"  # amtool — alertmanager 본체 tarball에서 추출
 KUBECONFORM_VERSION="0.6.7"
 YQ_VERSION="4.45.1"  # mikefarah yq v4 — Linux fallback에서 핀해서 공급망 공격 면적 축소
 
@@ -168,6 +169,38 @@ ensure_promtool() {
     rm -rf "${tmpdir}"
 }
 
+# === 2b. amtool (Alertmanager tarball) ===
+# Alertmanager 본체 릴리스에 amtool이 함께 들어있다 (별도 brew formula 없음).
+ensure_amtool() {
+    if have amtool; then
+        ok "amtool $(amtool --version 2>&1 | head -1 | awk '{print $3}') (already installed)"
+        return 0
+    fi
+    if [[ ${CHECK_ONLY} -eq 1 ]]; then
+        fail "amtool missing — version pin: v${ALERTMANAGER_VERSION}"
+        return 1
+    fi
+    local url tmpdir
+    url="https://github.com/prometheus/alertmanager/releases/download/v${ALERTMANAGER_VERSION}/alertmanager-${ALERTMANAGER_VERSION}.${OS}-${ARCH}.tar.gz"
+    tmpdir="$(mktemp -d)"
+    info "downloading amtool v${ALERTMANAGER_VERSION} (${OS}/${ARCH})"
+    curl -fsSL "${url}" | tar xz -C "${tmpdir}"
+
+    local gobin dest
+    gobin=$(go_bin)
+    if [[ -n "${gobin}" && -d "${gobin}" && -w "${gobin}" ]]; then
+        dest="${gobin}/amtool"
+        mv "${tmpdir}/alertmanager-${ALERTMANAGER_VERSION}.${OS}-${ARCH}/amtool" "${dest}"
+        ok "amtool installed → ${dest}"
+    else
+        dest="/usr/local/bin/amtool"
+        sudo mv "${tmpdir}/alertmanager-${ALERTMANAGER_VERSION}.${OS}-${ARCH}/amtool" "${dest}"
+        sudo chmod +x "${dest}"
+        ok "amtool installed → ${dest} (via sudo)"
+    fi
+    rm -rf "${tmpdir}"
+}
+
 # === 3. native 도구들 ===
 # 빌드 필수 : kubeconform, yq
 # e2e 전용  : kind, helm, kubectl  (--build-only 시 skip)
@@ -231,6 +264,7 @@ rc=0
 ensure_go        || rc=1
 ensure_go_tools  || rc=1
 ensure_promtool  || rc=1
+ensure_amtool    || rc=1
 ensure_native    || rc=1
 
 echo ""
