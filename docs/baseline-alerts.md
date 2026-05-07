@@ -206,20 +206,54 @@ inhibit_rules:
 운영 환경 fork에서 `KubeProxyDown`을 다시 켜야 하는 경우(PodMonitor를 ON 한 환경) — `mixins/main.libsonnet`의 disable 리스트에서 한 줄 삭제.
 
 ### 추가된 자체 알림 (`mixins/local/baseline-mixin/`)
-critical 5 + warning 5. 자세한 표현식은 [alerts.libsonnet](../mixins/local/baseline-mixin/alerts.libsonnet).
 
-| Alert | Severity | 룬북 |
+**1차 (베이스라인 PR)**: critical 5 + warning 5
+**2차 (워크로드+네트워크 보강 PR, 2026-05-07)**: critical 1 + warning 6 추가
+
+자세한 표현식은 [alerts.libsonnet](../mixins/local/baseline-mixin/alerts.libsonnet).
+
+| Alert | Severity | 룬북 | PR |
+|---|---|---|---|
+| `PrometheusRuleFailures` | critical | [📖](runbooks/PrometheusRuleFailures.md) | 1차 |
+| `AlertmanagerConfigInconsistent` | critical | [📖](runbooks/AlertmanagerConfigInconsistent.md) | 1차 |
+| `IngressControllerDown` | critical | [📖](runbooks/IngressControllerDown.md) | 1차 |
+| `CoreDNSDown` | critical | [📖](runbooks/CoreDNSDown.md) | 1차 |
+| `HighOOMKillRate` | critical | [📖](runbooks/HighOOMKillRate.md) | 1차 |
+| `NodeConntrackNearLimit` | critical | [📖](runbooks/NodeConntrackNearLimit.md) | **2차** |
+| `HighIngress5xxRate` | warning | — | 1차 |
+| `CoreDNSLatencyHigh` | warning | — | 1차 |
+| `CoreDNSErrorsHigh` | warning | — | 1차 |
+| `HighDiskSaturation` | warning | — | 1차 |
+| `HighImagePullBackOff` | warning | — | 1차 |
+| `HighIngress4xxRate` | warning | — | **2차** |
+| `PodRestartingTooOften` | warning | — | **2차** |
+| `WorkloadRolloutStuck` | warning | — | **2차** |
+| `JobFailedNonCron` | warning | — | **2차** |
+| `ServiceEndpointsEmpty` | warning | — | **2차** |
+| `NodeNetworkErrorsHigh` | warning | — | **2차** |
+
+### 2차 PR — 워크로드 + 네트워크 보강 의사결정 (2026-05-07)
+
+**원칙**: "포괄성 우선" — 한 알림이 여러 원인을 한 번에 잡는다. 원인별로 알림 쪼개지 않는다.
+
+| 결정 | 선택 | 근거 |
 |---|---|---|
-| `PrometheusRuleFailures` | critical | [📖](runbooks/PrometheusRuleFailures.md) |
-| `AlertmanagerConfigInconsistent` | critical | [📖](runbooks/AlertmanagerConfigInconsistent.md) |
-| `IngressControllerDown` | critical | [📖](runbooks/IngressControllerDown.md) |
-| `CoreDNSDown` | critical | [📖](runbooks/CoreDNSDown.md) |
-| `HighOOMKillRate` | critical | [📖](runbooks/HighOOMKillRate.md) |
-| `HighIngress5xxRate` | warning | — |
-| `CoreDNSLatencyHigh` | warning | — |
-| `CoreDNSErrorsHigh` | warning | — |
-| `HighDiskSaturation` | warning | — |
-| `HighImagePullBackOff` | warning | — |
+| `KubePodNotReady` 대체 알림 자체 작성? | ❌ 안 함 | kubernetes-mixin 표준 그대로 사용. 신호 동일, 유지보수 외주화. |
+| Z-score 통계 알림 (TrafficAnomaly) | ❌ 이번 PR 미포함 | 환경별 baseline 학습 필요 — 템플릿이 강제로 켜기 부적절. 후속 PR에서 docs 가이드만. |
+| cert-manager-mixin 활성화 | ❌ 이번 PR 미포함 | 사용자 환경에 cert-manager + ServiceMonitor 설치 필요. [user-environment-deps.md](user-environment-deps.md)로 추적. |
+| CoreDNS 임계값 조정 (1s→4s, 5%→3%) | ❌ 이번 PR 미포함 | mixin 표준값과 노이즈 트레이드오프 — 사용자 환경별 검증 후 별도 PR. |
+
+**2차 PR 신규 알림 도메인 매핑**
+
+| 도메인 | 알림 | 잡는 것 |
+|---|---|---|
+| 워크로드 헬스 | `PodRestartingTooOften` | CrashLoopBackOff 진입 전 단계 (KubePodCrashLooping 보완) |
+| 워크로드 헬스 | `WorkloadRolloutStuck` | 잘못된 이미지 배포 후 방치 (KubeDeploymentReplicasMismatch 보완) |
+| 워크로드 헬스 | `JobFailedNonCron` | 1회성 Job 실패 (KubeJobFailed disable의 빈자리) |
+| 워크로드 헬스 | `ServiceEndpointsEmpty` | selector 미스 / Pod 없음 / readiness 실패 통합 |
+| 네트워크 — 노드 | `NodeConntrackNearLimit` | conntrack 고갈 — Preply/loveholidays 직접 원인 |
+| 네트워크 — 노드 | `NodeNetworkErrorsHigh` | NIC 에러/드롭 — 드라이버/하드웨어/스위치 통합 |
+| 네트워크 — ingress | `HighIngress4xxRate` | 4xx 급증 — 배포 직후 인증/route 깨짐 |
 
 ### 정책 강제 (`mixins/lib/transform.libsonnet`)
 - 자체 mixin: severity ∈ {critical, warning} 위반 시 jsonnet 빌드 실패. critical은 runbook_url 필수.

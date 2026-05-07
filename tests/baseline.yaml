@@ -97,3 +97,37 @@ tests:
               summary: 'Alertmanager HA replicas have divergent configs.'
               description: 'Alertmanager service am has inconsistent config across replicas. Risk of duplicate or missed notifications.'
               runbook_url: 'https://github.com/seokheejang/o11y/blob/main/docs/runbooks/AlertmanagerConfigInconsistent.md'
+
+  # 6) NodeConntrackNearLimit — conntrack 80%+ 시 10분 후 critical
+  - interval: 1m
+    name: NodeConntrackNearLimit fires when conntrack table > 80% full
+    input_series:
+      - series: 'node_nf_conntrack_entries{job="node-exporter", instance="node-1"}'
+        values: '85000x15'
+      - series: 'node_nf_conntrack_entries_limit{job="node-exporter", instance="node-1"}'
+        values: '100000x15'   # 85% — 임계 80% 초과
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: NodeConntrackNearLimit
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              instance: node-1
+              job: node-exporter
+            exp_annotations:
+              summary: 'Node node-1 conntrack table > 80% full.'
+              description: 'Conntrack usage at 85%. Risk of new connection drops.'
+              runbook_url: 'https://github.com/seokheejang/o11y/blob/main/docs/runbooks/NodeConntrackNearLimit.md'
+
+  # 6-neg) NodeConntrackNearLimit — 80% 미만에서는 발화 금지
+  - interval: 1m
+    name: NodeConntrackNearLimit does not fire below threshold
+    input_series:
+      - series: 'node_nf_conntrack_entries{job="node-exporter", instance="node-2"}'
+        values: '50000x15'
+      - series: 'node_nf_conntrack_entries_limit{job="node-exporter", instance="node-2"}'
+        values: '100000x15'   # 50% — 정상
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: NodeConntrackNearLimit
+        exp_alerts: []
