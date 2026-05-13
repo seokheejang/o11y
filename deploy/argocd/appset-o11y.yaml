@@ -1,0 +1,77 @@
+# ApplicationSet — 환경별 App-of-Apps root Application을 자동 generate.
+#
+# 흐름:
+#   1) 카피본 운영자가 이 ApplicationSet을 ArgoCD가 띄워진 클러스터에 1회 apply.
+#   2) ApplicationSet controller가 `generators.list.elements` 순회하면서 각 env에 대해
+#      template을 펼침 → env별 root Application 생성 (`<env>-o11y`).
+#   3) 그 root Application이 `deploy/envs/<env>/apps/` 디렉토리의 child Application들을
+#      sync (kube-prometheus-stack chart + 자체 mixin manifests + …).
+#
+# 환경 추가:
+#   - `deploy/envs/<new-env>/` 디렉토리를 example-dev에서 카피 + 토큰 치환
+#   - 아래 `elements` 리스트에 새 env 한 줄 추가
+#   → 두 PR 머지로 새 env 등록.
+#
+# fork 받은 운영자: REPLACE_* 토큰 채우고, elements 리스트를 자기 env 4개로 갱신.
+# 환경 이름은 `deploy/envs/<name>` 디렉토리명과 정합 유지.
+
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: o11y-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/part-of: o11y
+spec:
+  goTemplate: true
+  goTemplateOptions: ['missingkey=error']
+
+  generators:
+    - list:
+        # 각 env: 디렉토리명 + 적용 대상 cluster + 그 외 파라미터.
+        # `server`는 ArgoCD가 인지하는 cluster URL (Secret type=argocd.argoproj.io/cluster) —
+        # in-cluster이면 `https://kubernetes.default.svc`, 외부면 등록된 URL.
+        # 카피본 운영자가 자기 환경들로 갱신 (예: dev-a / staging / prod-a / prod-b 등).
+        elements:
+          - name: example-dev
+            cluster: REPLACE_WITH_CLUSTER_SERVER_URL    # 예: https://api.dev-a.example.com
+          # - name: staging
+          #   cluster: https://api.staging.example.com
+          # - name: prod-a
+          #   cluster: https://api.prod-a.example.com
+          # - name: prod-b
+          #   cluster: https://api.prod-b.example.com
+
+  template:
+    metadata:
+      name: '{{ .name }}-o11y'
+      namespace: argocd
+      labels:
+        app.kubernetes.io/managed-by: argocd
+        app.kubernetes.io/component: app-of-apps
+        env: '{{ .name }}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: REPLACE_WITH_REPO_URL
+        targetRevision: HEAD
+        path: 'deploy/envs/{{ .name }}/apps'
+        directory:
+          recurse: false
+      destination:
+        # 이 root Application 자체는 ArgoCD 클러스터(보통 mgmt cluster)에 sync.
+        # 그 안의 child Application들이 destination.server를 각 env cluster로 가리킴 —
+        # child Application 정의에서 명시적으로 cluster URL을 박거나 ApplicationSet template
+        # 변수로 추가 transform 가능.
+        server: https://kubernetes.default.svc
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ApplyOutOfSyncOnly=true

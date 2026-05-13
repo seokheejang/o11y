@@ -81,15 +81,13 @@ cmd_setup() {
         --wait
     echo "[3/5] Done."
 
-    # [4/5] Slack webhook placeholder Secret + o11y manifests
-    # AlertmanagerConfig CR의 slackConfigs.apiURL이 참조하는 Secret을 placeholder로 만든다.
-    # 없으면 operator reload는 통과해도 alertmanager가 receiver dispatch 시점에 url resolve 실패.
-    # 실제 webhook URL은 환경 인프라(prod GitOps/SealedSecret 등)에서 주입 — repo는 placeholder만 보장.
+    # [4/5] Slack webhook placeholder Secret (deploy/secrets/scripts/ 위임) + o11y manifests
+    # AlertmanagerConfig가 참조하는 alertmanager-slack-webhook Secret을 placeholder URL로 생성.
+    # 같은 스크립트가 첫 검증/local 흐름의 표준 — 운영은 deploy/secrets/{sealed,eso}/ 패턴.
     echo "[4/5] Creating placeholder Slack webhook Secret + applying o11y manifests..."
-    kubectl create secret generic alertmanager-slack-webhook \
-        -n "${MONITORING_NAMESPACE}" \
-        --from-literal=url='https://hooks.slack.com/services/PLACEHOLDER/PLACEHOLDER/PLACEHOLDER' \
-        --dry-run=client -o yaml | kubectl apply -f -
+    SLACK_WEBHOOK_URL='https://hooks.slack.com/services/PLACEHOLDER/PLACEHOLDER/PLACEHOLDER' \
+        NAMESPACE="${MONITORING_NAMESPACE}" \
+        bash "${REPO_ROOT}/deploy/secrets/scripts/create-slack-secret-envsubst.sh"
     (cd "${REPO_ROOT}" && make build)
     kubectl apply -R -f "${REPO_ROOT}/manifests/" -n "${MONITORING_NAMESPACE}"
     echo "[4/5] Done."

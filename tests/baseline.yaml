@@ -1,4 +1,4 @@
-# promtool 단위 테스트 — baseline-mixin의 critical 5개 발화 시나리오.
+# promtool 단위 테스트 — components/prometheus의 critical 5개 발화 시나리오.
 # 빌드 의존: tools/build.sh가 out/prometheus-rules-raw/baseline.yaml 생성한 후 실행.
 
 rule_files:

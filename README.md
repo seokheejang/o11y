@@ -4,7 +4,7 @@
 
 Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) 위에 얹는 **observability 콘텐츠 레이어 템플릿**. 알림 룰·Alertmanager 라우팅·Grafana 대시보드를 [Monitoring Mixins](https://monitoring.mixins.dev/) 패턴(jsonnet/grafonnet)으로 한 묶음 관리하고, ArgoCD GitOps로 클러스터에 sync 하는 **참조 구조**를 제공한다.
 
-이 repo는 **fork 해서 자기 환경에 맞게 가져다 쓰는 것**을 전제로 한다. 디렉토리 구조·정책 문서·툴체인 골격을 그대로 두고, `mixins/local/<도메인>-mixin/`만 채워나가면 된다.
+이 repo는 **카피해서 자기 환경에 맞게 가져다 쓰는 것**을 전제로 한다 — 단방향 copy-friendly snapshot 모델 (fork/git link X). 디렉토리 구조·정책 문서·툴체인·deployment scaffold 골격을 그대로 두고, `components/<도메인>/`에 자기 영역만 채워나가면 된다. 자세한 카피 절차는 [docs/deploying.md](docs/deploying.md).
 
 > **인프라(차트 자체) 배포는 이 repo가 다루지 않는다.** 클러스터 위에 얹는 콘텐츠 — 알림이 무엇을 보고 무엇을 보내는가 — 만 다룬다.
 
@@ -25,11 +25,14 @@ Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://git
 ├── Makefile                  # build / test / lint / vendor 타겟
 ├── jsonnetfile.json          # jsonnet-bundler 의존성 (외부 mixin 목록)
 │
-├── mixins/                   # mixin 소스
-│   ├── main.libsonnet            # 빌드 진입점 — multi-output 키 생성 (manifests/<kind>/<name>)
-│   ├── lib/                      # CR/ConfigMap wrapping 헬퍼
-│   ├── local/                    # 자체(in-house) mixin — 도메인별 디렉토리 (rpc-mixin/, dns-mixin/, ...)
-│   └── external/                 # 외부 mixin import wrapper (.libsonnet)
+├── main.libsonnet            # 빌드 진입점 — multi-output 키 생성 (manifests/<kind>/<name>)
+│
+├── components/               # monitoring stack 컴포넌트별 jsonnet 소스
+│   ├── _lib/                     # CR/ConfigMap wrapping + transform + alertmanager 변환 헬퍼
+│   ├── _external/                # 외부 mixin import wrapper (kubernetes, cert-manager)
+│   ├── prometheus/               # 자체 알림 룰 + _config (selectors, thresholds)
+│   ├── alertmanager/             # 라우팅 트리 + receivers + inhibit_rules
+│   └── grafana/                  # 자체 대시보드 (placeholder, 후속)
 │
 ├── vendor/                   # jb install 결과 (gitignored)
 ├── out/                      # 빌드 부산물 (promtool/amtool용 raw 형식, gitignored)
@@ -38,6 +41,12 @@ Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://git
 │   ├── prometheus-rules/         # PrometheusRule CR
 │   ├── alertmanager-config/      # AlertmanagerConfig CR (severity 라우팅 + inhibit_rules)
 │   └── grafana-dashboards/       # ConfigMap (grafana_dashboard="1" 라벨)
+│
+├── deploy/                   # 환경 적용 scaffold (카피 후 fork 운영자가 직접 채움)
+│   ├── envs/_base/               # 환경 공통 chart values + AM CR patch
+│   ├── envs/example-dev/         # 카피용 placeholder env (REPLACE_* 토큰)
+│   ├── secrets/{sealed,eso,scripts}/  # Sealed / ExternalSecrets / envsubst 패턴
+│   └── argocd/appset-o11y.yaml   # ApplicationSet (multi-env 자동 generate)
 │
 ├── tests/                    # promtool test rules + amtool routing 단언 입력
 │
@@ -48,11 +57,10 @@ Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://git
 ├── docs/
 │   ├── alerting-philosophy.md    # SRE 원칙 — 어떤 알림을 만들/안 만들 것인가
 │   ├── severity-policy.md        # critical/warning 2단계 정책
-│   ├── adding-a-mixin.md         # 외부/자체 mixin 추가 절차
+│   ├── adding-a-component.md     # 외부/자체 컴포넌트 추가 절차
+│   ├── deploying.md              # fork 카피 후 환경 적용 체크리스트
 │   ├── runbooks/                 # 알림별 대응 절차서
 │   └── learnings/                # 의사결정 노트 (도구 선택 근거 등)
-│
-├── argocd/                   # ArgoCD Application 매니페스트 (4차 PR에서 채움)
 │
 └── .github/
     ├── CODEOWNERS
@@ -88,7 +96,7 @@ kubectl apply -R -f manifests/
 
 ### Monitoring Mixin 패턴
 
-한 컴포넌트(예: kubernetes, RPC 노드, DNS)의 **알림 룰 + 레코딩 룰 + 대시보드**를 jsonnet 한 묶음으로 만든다. CNCF 생태계 표준이며 [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)가 그대로 쓰는 방식. 외부 mixin은 [monitoring.mixins.dev](https://monitoring.mixins.dev/)에서 import해서 `mixins/external/`에 wrapper를 두고, 자체 mixin은 `mixins/local/`에 둔다. 자세한 추가 절차는 [docs/adding-a-mixin.md](docs/adding-a-mixin.md).
+한 컴포넌트(예: kubernetes, RPC 노드, DNS)의 **알림 룰 + 레코딩 룰 + 대시보드 + 라우팅**을 jsonnet 한 묶음으로 만든다. CNCF 생태계 표준이며 [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)가 그대로 쓰는 방식. 외부 mixin은 [monitoring.mixins.dev](https://monitoring.mixins.dev/)에서 import해서 `components/_external/`에 wrapper를 두고, 자체 컴포넌트는 `components/<name>/`에 둔다. 자세한 추가 절차는 [docs/adding-a-component.md](docs/adding-a-component.md).
 
 ### kube-prometheus-stack sidecar 통합
 
@@ -105,7 +113,7 @@ kubectl apply -R -f manifests/
 
 | 도구 | 역할 | 본 repo에서의 쓰임 |
 |---|---|---|
-| [`jsonnet`](https://github.com/google/go-jsonnet) | JSON을 코드로 만드는 데이터 템플릿 언어 (Go 구현) | mixin 소스 컴파일 — `mixins/main.libsonnet` → JSON → YAML |
+| [`jsonnet`](https://github.com/google/go-jsonnet) | JSON을 코드로 만드는 데이터 템플릿 언어 (Go 구현) | 컴포넌트 소스 컴파일 — `main.libsonnet` (+ `components/`) → JSON → YAML |
 | [`jb`](https://github.com/jsonnet-bundler/jsonnet-bundler) | jsonnet 의존성 관리자 (npm/cargo 같은 역할) | `jsonnetfile.json`의 외부 mixin을 `vendor/`에 받음 |
 | [`gojsontoyaml`](https://github.com/brancz/gojsontoyaml) | JSON → YAML 변환기 (필드 순서 안정) | jsonnet 출력 → kubectl이 읽는 YAML |
 | [`yq`](https://github.com/mikefarah/yq) | YAML용 jq | PrometheusRule CR에서 `.spec`만 추출해 promtool에 먹임 |
@@ -119,7 +127,7 @@ kubectl apply -R -f manifests/
 
 AlertmanagerConfig CR(`monitoring.coreos.com/v1alpha1`)의 spec은 **raw alertmanager.yml과 필드명이 다르다** (`groupBy` vs `group_by`, `matchers: [{name,value,matchType}]` vs `matchers: ["severity=\"critical\""]` 등). 운영 클러스터의 alertmanager 본체는 raw 형식만 이해하므로 amtool도 raw만 받는다.
 
-본 repo는 jsonnet에서 routing intent 객체를 정의하고 [`mixins/lib/alertmanager.libsonnet`](mixins/lib/alertmanager.libsonnet)이 양쪽으로 변환한다 — 클러스터에 sync되는 CR(`manifests/alertmanager-config/`)과 amtool 검증용 raw(`out/alertmanager-config-raw/`). 이렇게 해야 "라우팅 단언이 통과한 그 라우팅이 클러스터에 들어간다"가 같은 source-of-truth로 보장된다.
+본 repo는 jsonnet에서 routing intent 객체를 정의하고 [`components/_lib/alertmanager.libsonnet`](components/_lib/alertmanager.libsonnet)이 양쪽으로 변환한다 — 클러스터에 sync되는 CR(`manifests/alertmanager-config/`)과 amtool 검증용 raw(`out/alertmanager-config-raw/`). 이렇게 해야 "라우팅 단언이 통과한 그 라우팅이 클러스터에 들어간다"가 같은 source-of-truth로 보장된다.
 
 ## Policy & Conventions
 
@@ -127,7 +135,8 @@ AlertmanagerConfig CR(`monitoring.coreos.com/v1alpha1`)의 spec은 **raw alertma
 |------|------|
 | [Alerting Philosophy](docs/alerting-philosophy.md) | "할 일 없으면 알림 만들지 마라" — SRE 원칙 |
 | [Severity Policy](docs/severity-policy.md) | `critical` / `warning` 2단계만. 채널/응답 기대 매핑 |
-| [Adding a Mixin](docs/adding-a-mixin.md) | 외부 mixin import / 자체 mixin 작성 컨벤션 |
+| [Adding a Component](docs/adding-a-component.md) | 외부 mixin import / 자체 컴포넌트 작성 컨벤션 |
+| [Deploying](docs/deploying.md) | fork 카피 후 환경 적용 체크리스트 (helm values + ArgoCD + Secrets) |
 | [Runbooks](docs/runbooks/) | 알림별 대응 절차서 (`runbook_url` annotation 대상) |
 
 ## Roadmap
@@ -145,27 +154,29 @@ AlertmanagerConfig CR(`monitoring.coreos.com/v1alpha1`)의 spec은 **raw alertma
 - [x] 외부 mixin 1개(kubernetes-mixin) wrap — 빌드 동작 증명
 - [x] 로컬 kind e2e 골격 (`e2e/`) — cluster up + manifests apply까지
 
-### ✅ 베이스라인 PR — 운영 알림 베이스라인 (현재)
-- [x] kubernetes-mixin noisy 7개 disable (`mixins/main.libsonnet` 코멘트에 근거 issue 링크)
-- [x] 자체 `mixins/local/baseline-mixin/` — critical 5 + warning 5
-- [x] `mixins/lib/transform.libsonnet` — disable / severity / runbook 정책 강제
+### ✅ 베이스라인 PR — 운영 알림 베이스라인
+- [x] kubernetes-mixin noisy 7개 disable (`main.libsonnet` 코멘트에 근거 issue 링크)
+- [x] 자체 `components/prometheus/` — critical 5 + warning 5
+- [x] `components/_lib/transform.libsonnet` — disable / severity / runbook 정책 강제
 - [x] cert-manager mixin import wrap stub (디폴트 OFF)
 - [x] critical 12개 룬북 stub
 - [x] [docs/baseline-alerts.md](docs/baseline-alerts.md) 의사결정 노트 + 적용 결과
 
-### 🚧 Alertmanager 라우팅 PR (현재)
-- [x] `mixins/local/baseline-mixin/alertmanager.libsonnet` — severity 기반 routing tree + inhibit_rules
-- [x] `mixins/lib/alertmanager.libsonnet` — CR ↔ raw 변환 (단일 source-of-truth)
+### ✅ Alertmanager 라우팅 PR
+- [x] `components/alertmanager/routing.libsonnet` — severity 기반 routing tree + inhibit_rules
+- [x] `components/_lib/alertmanager.libsonnet` — CR ↔ raw 변환 (단일 source-of-truth)
 - [x] AlertmanagerConfig CR 렌더링 → `manifests/alertmanager-config/`
 - [x] amtool 통합 — `check-config` + `config routes test` 단언 (`tests/alertmanager-routing.sh`)
+- [x] Slack receiver 와이어링 (critical/warning color split + pager placeholder)
 
-### 🚧 클러스터 sync PR — 후속
-- [ ] `argocd/` Application 매니페스트
-- [ ] 테스트 클러스터에서 ConfigMap sidecar 픽업 검증
-- [ ] Slack/PagerDuty receiver 연결 (Secret은 SealedSecret/SOPS로 별도 repo)
+### ✅ OSS bootstrap — 구조 + scaffold (현재)
+- [x] `components/<name>/` 컴포넌트 재구성 (prometheus / alertmanager / grafana)
+- [x] `deploy/envs/`, `deploy/secrets/{sealed,eso,scripts}/`, `deploy/argocd/appset-o11y.yaml`
+- [x] `docs/deploying.md` — fork 카피 후 환경 적용 체크리스트
+- [x] `docs/adding-a-component.md` — 컴포넌트 추가 컨벤션
 
-### 🚧 첫 도메인 mixin PR
-- [ ] `mixins/local/rpc-mixin/` — 블록 헤드/peer/sync 알림 + 패널 1세트
+### 🚧 첫 도메인 컴포넌트 PR — 후속
+- [ ] `components/rpc/` — 블록 헤드/peer/sync 알림 + 패널 1세트
 - [ ] `docs/runbooks/rpc-*.md` — RPC 룬북 초안
 
 ### 🚧 시나리오 e2e PR — 알림 실제 발화 검증
@@ -175,8 +186,8 @@ AlertmanagerConfig CR(`monitoring.coreos.com/v1alpha1`)의 spec은 **raw alertma
 - [ ] `e2e/scripts/scenarios.sh fire-pv-failed` — bad StorageClass → KubePersistentVolumeErrors 발화
 
 ### 🚧 그 이후
-- [ ] `mixins/local/dns-mixin/` (권위 DNS 모니터링)
-- [ ] `mixins/local/infra-mixin/` (환경 특화 알림)
+- [ ] `components/dns/` (권위 DNS 모니터링)
+- [ ] `components/infra/` (환경 특화 알림)
 - [ ] SLO 기반 multi-burn-rate 알림
 
 ## References

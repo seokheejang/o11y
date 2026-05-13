@@ -36,7 +36,7 @@
 
 ## Alertmanager 라우팅 정합
 
-이 트리는 **실제로 빌드 산출물에 들어간다**. 소스: [`mixins/local/baseline-mixin/alertmanager.libsonnet`](../mixins/local/baseline-mixin/alertmanager.libsonnet).
+이 트리는 **실제로 빌드 산출물에 들어간다**. 소스: [`components/alertmanager/routing.libsonnet`](../components/alertmanager/routing.libsonnet).
 검증: `make test`가 `amtool config routes test`로 아래 단언을 매 빌드마다 실행.
 
 ```yaml

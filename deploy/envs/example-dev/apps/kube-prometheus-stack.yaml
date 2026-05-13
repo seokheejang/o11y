@@ -1,0 +1,58 @@
+# kube-prometheus-stack helm chart Application — env 단위 sync.
+#
+# multi-source 패턴:
+#   - source 1: 공식 helm chart (artifacthub)
+#   - source 2: 카피본 git repo — values-base.yaml + env values.yaml 머지 (ArgoCD가 순서대로 적용)
+#
+# fork 받은 운영자: REPLACE_* 토큰만 채우면 끝. chart 버전은 환경별 자유 선택 가능
+# (e2e는 OSS 최신 stable, prod는 더 보수적 — 정합 강제 X).
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: replace-env-name-kube-prometheus-stack    # 예: dev-us-east-1-kube-prometheus-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    env: replace-env-name
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    # === source 1: 공식 chart ===
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 85.0.2    # 환경별로 자유롭게 (artifacthub에서 release 확인)
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/deploy/envs/_base/values-base.yaml
+          - $values/deploy/envs/replace-env-name/values.yaml
+    # === source 2: values overlay (카피본 git) ===
+    - repoURL: REPLACE_WITH_REPO_URL
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true   # CRD-heavy chart라 SSA 권장
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    # operator가 자기 자원에 추가하는 metadata 무시 (chart upgrade 시 diff 노이즈)
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+    - group: monitoring.coreos.com
+      kind: Alertmanager
+      jsonPointers:
+        - /spec/alertmanagerConfigMatcherStrategy
+      # patches/alertmanager-matcherstrategy.yaml을 직접 적용하는 경우 chart values와 diff 회피.
+      # chart values로 처리하면 이 항목은 불필요 — 환경 운영 방식에 따라 선택.

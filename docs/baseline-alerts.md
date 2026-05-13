@@ -1,6 +1,6 @@
 # Baseline Alerts — 운영 필수 알림
 
-> "할 일 없으면 알림 만들지 마라" ([alerting-philosophy.md](alerting-philosophy.md)) 원칙 위에서, **K8s 클러스터를 24/7 운용하기 위해 반드시 받아야 할 베이스라인** — `mixins/external/kubernetes.libsonnet`이 가져오는 `kubernetes-mixin` 위에서 실무 합의를 반영해 정리.
+> "할 일 없으면 알림 만들지 마라" ([alerting-philosophy.md](alerting-philosophy.md)) 원칙 위에서, **K8s 클러스터를 24/7 운용하기 위해 반드시 받아야 할 베이스라인** — `components/_external/kubernetes.libsonnet`이 가져오는 `kubernetes-mixin` 위에서 실무 합의를 반영해 정리.
 
 **적용 정책**: severity는 `critical` / `warning` 2단계만 ([severity-policy.md](severity-policy.md)). critical은 페이저 + on-call ack 15분, warning은 영업시간 대응.
 
@@ -94,7 +94,7 @@
 - **PrometheusRuleFailures** — `prometheus_rule_evaluation_failures_total > 0` → critical (룰 평가 자체가 실패하면 알림이 안 옴 → 알림의 알림). [Wiki](https://github.com/prometheus-operator/kube-prometheus/wiki/prometheusrulefailures)
 - **AlertmanagerConfigInconsistent** — `count by(service) (alertmanager_config_hash) > 1` → critical (HA 설정 불일치).
 
-> 우리 repo 적용: 이 항목들은 `mixins/external/`(외부 mixin import)와 `mixins/local/_baseline/` (자체 베이스라인 mixin)으로 나눠 관리.
+> 우리 repo 적용: 이 항목들은 `components/_external/`(외부 mixin import)와 `components/prometheus/` (자체 알림 룰) + `components/alertmanager/` (라우팅)로 나눠 관리.
 
 ---
 
@@ -191,7 +191,7 @@ inhibit_rules:
 ## 적용 결과 (baseline-alerts PR에서 반영)
 
 ### 비활성화된 알림 (kubernetes-mixin)
-`mixins/main.libsonnet`의 `k8sDisabledAlerts`에서 `transform.disableAlerts`로 제거.
+`main.libsonnet`의 `k8sDisabledAlerts`에서 `transform.disableAlerts`로 제거.
 
 | Alert | 근거 | Issue |
 |---|---|---|
@@ -203,14 +203,14 @@ inhibit_rules:
 | `KubeContainerWaiting` | Pod startup 잠시 waiting은 정상 | — |
 | `KubePodNotScheduled` | KubePodNotReady와 신호 중복 | — |
 
-운영 환경 fork에서 `KubeProxyDown`을 다시 켜야 하는 경우(PodMonitor를 ON 한 환경) — `mixins/main.libsonnet`의 disable 리스트에서 한 줄 삭제.
+운영 환경 fork에서 `KubeProxyDown`을 다시 켜야 하는 경우(PodMonitor를 ON 한 환경) — `main.libsonnet`의 disable 리스트에서 한 줄 삭제.
 
-### 추가된 자체 알림 (`mixins/local/baseline-mixin/`)
+### 추가된 자체 알림 (`components/prometheus/alerts.libsonnet`)
 
 **1차 (베이스라인 PR)**: critical 5 + warning 5
 **2차 (워크로드+네트워크 보강 PR, 2026-05-07)**: critical 1 + warning 6 추가
 
-자세한 표현식은 [alerts.libsonnet](../mixins/local/baseline-mixin/alerts.libsonnet).
+자세한 표현식은 [alerts.libsonnet](../components/prometheus/alerts.libsonnet).
 
 | Alert | Severity | 룬북 | PR |
 |---|---|---|---|
@@ -255,7 +255,7 @@ inhibit_rules:
 | 네트워크 — 노드 | `NodeNetworkErrorsHigh` | NIC 에러/드롭 — 드라이버/하드웨어/스위치 통합 |
 | 네트워크 — ingress | `HighIngress4xxRate` | 4xx 급증 — 배포 직후 인증/route 깨짐 |
 
-### 정책 강제 (`mixins/lib/transform.libsonnet`)
+### 정책 강제 (`components/_lib/transform.libsonnet`)
 - 자체 mixin: severity ∈ {critical, warning} 위반 시 jsonnet 빌드 실패. critical은 runbook_url 필수.
 - 외부 mixin: 위반 목록을 `manifests/prometheus-rules-meta/external-policy-report.yaml` ConfigMap에 export (visibility만).
 
@@ -269,12 +269,12 @@ inhibit_rules:
 ## 우리 repo에 어떻게 적용할까
 
 ### 단기 (다음 PR 또는 베이스라인 PR)
-1. `mixins/local/_baseline/` 신규 — 위 #4의 추가 베이스라인 알림(certs, DNS, ingress, OOMKill, PrometheusRuleFailures)
-2. `mixins/external/kubernetes.libsonnet`에서 위 #3의 noisy 알림 disable + downgrade
+1. `components/prometheus/` 신규 — 위 #4의 추가 베이스라인 알림(certs, DNS, ingress, OOMKill, PrometheusRuleFailures)
+2. `components/_external/kubernetes.libsonnet`에서 위 #3의 noisy 알림 disable + downgrade
 3. `docs/runbooks/` — 위 critical 7-10개에 대한 룬북 stub
 
 ### 중기 (4차 PR — Alertmanager 라우팅)
-4. `mixins/main.libsonnet`에 AlertmanagerConfig CR 출력 추가
+4. `main.libsonnet`에 AlertmanagerConfig CR 출력 추가
 5. 위 #5의 inhibit_rules + severity 라우팅 그대로 코드화
 6. `amtool config routes test`로 critical 알림이 정확히 PagerDuty로 가는지 단위 검증
 
