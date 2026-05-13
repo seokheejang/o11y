@@ -20,15 +20,15 @@ env별 child Applications (envs/<env>/apps/*.yaml)
 
 ```bash
 # 1) deploy/envs/example-dev를 카피해서 자기 환경 디렉토리 만들기
-cp -r deploy/envs/example-dev deploy/envs/dev1
+cp -r deploy/envs/example-dev deploy/envs/<your-env>
 # (REPLACE_* 토큰 치환 — values.yaml, app-of-apps.yaml, apps/*.yaml)
 
-# 2) appset-o11y.yaml의 generators.list.elements에 dev1 추가 + REPLACE_WITH_REPO_URL 갱신
+# 2) appset-o11y.yaml의 generators.list.elements에 <your-env> 추가 + REPLACE_WITH_REPO_URL 갱신
 
 # 3) ArgoCD가 띄워진 클러스터(mgmt cluster)에 ApplicationSet 1회 apply
 kubectl -n argocd apply -f deploy/argocd/appset-o11y.yaml
 
-# 4) ArgoCD UI에서 dev1-o11y root Application + child Applications 생성 확인
+# 4) ArgoCD UI에서 <your-env>-o11y root Application + child Applications 생성 확인
 #    ArgoCD가 자동으로 child가 가리키는 chart/manifests를 sync
 ```
 

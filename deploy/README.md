@@ -23,7 +23,7 @@ deploy/
 
 ```
 1) fork 받기 (코드 복사로 별도 repo)
-2) deploy/envs/example-dev 카피 → 자기 env 디렉토리 만들기 (예: dev1, prod1)
+2) deploy/envs/example-dev 카피 → 자기 env 디렉토리 만들기 (예: dev-a, staging, prod-a)
 3) REPLACE_* 토큰 치환 (cluster name, repo URL, ArgoCD cluster URL)
 4) deploy/secrets에서 패턴 선택 (sealed / eso) + Secret 생성
 5) deploy/argocd/appset-o11y.yaml의 elements에 env 추가 + ArgoCD에 1회 apply

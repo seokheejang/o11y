@@ -32,16 +32,16 @@ spec:
         # 각 env: 디렉토리명 + 적용 대상 cluster + 그 외 파라미터.
         # `server`는 ArgoCD가 인지하는 cluster URL (Secret type=argocd.argoproj.io/cluster) —
         # in-cluster이면 `https://kubernetes.default.svc`, 외부면 등록된 URL.
-        # 카피본 운영자가 자기 4환경(예: dev1/dev2/prod1/prod2)으로 갱신.
+        # 카피본 운영자가 자기 환경들로 갱신 (예: dev-a / staging / prod-a / prod-b 등).
         elements:
           - name: example-dev
-            cluster: REPLACE_WITH_CLUSTER_SERVER_URL    # 예: https://api.dev-us-east-1.example.com
-          # - name: dev2
-          #   cluster: https://api.dev-eu-west-1.example.com
-          # - name: prod1
-          #   cluster: https://api.prod-us-east-1.example.com
-          # - name: prod2
-          #   cluster: https://api.prod-eu-west-1.example.com
+            cluster: REPLACE_WITH_CLUSTER_SERVER_URL    # 예: https://api.dev-a.example.com
+          # - name: staging
+          #   cluster: https://api.staging.example.com
+          # - name: prod-a
+          #   cluster: https://api.prod-a.example.com
+          # - name: prod-b
+          #   cluster: https://api.prod-b.example.com
 
   template:
     metadata:
