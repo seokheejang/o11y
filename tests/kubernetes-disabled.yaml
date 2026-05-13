@@ -2,7 +2,7 @@
 # 발화 조건을 충족하는 input_series를 줘도 alert_rule_test의 exp_alerts가 빈 배열([])이어야 한다.
 # 만약 disable이 풀리면 promtool이 발화를 감지하고 이 테스트가 fail한다.
 #
-# disable 근거: docs/baseline-alerts.md #3, mixins/main.libsonnet의 k8sDisabledAlerts 코멘트.
+# disable 근거: docs/baseline-alerts.md #3, main.libsonnet의 k8sDisabledAlerts 코멘트.
 
 rule_files:
   - ../out/prometheus-rules-raw/kubernetes.yaml
