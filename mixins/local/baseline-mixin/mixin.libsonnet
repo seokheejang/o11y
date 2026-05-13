@@ -3,4 +3,5 @@
 // docs/baseline-alerts.md 참고.
 
 (import 'config.libsonnet') +
-(import 'alerts.libsonnet')
+(import 'alerts.libsonnet') +
+(import 'alertmanager.libsonnet')

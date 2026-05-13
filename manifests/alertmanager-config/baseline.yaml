@@ -1,0 +1,66 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  labels:
+    alertmanagerConfig: baseline
+    app.kubernetes.io/managed-by: o11y
+  name: baseline
+  namespace: monitoring
+spec:
+  inhibitRules:
+  - equal:
+    - alertname
+    - cluster
+    - namespace
+    sourceMatch:
+    - matchType: =
+      name: severity
+      value: critical
+    targetMatch:
+    - matchType: =
+      name: severity
+      value: warning
+  - equal:
+    - cluster
+    - node
+    sourceMatch:
+    - matchType: =
+      name: alertname
+      value: KubeNodeNotReady
+    targetMatch:
+    - matchType: =
+      name: severity
+      value: warning
+  receivers:
+  - name: "null"
+  - name: pager
+  - name: critical-chat
+  - name: warning-chat
+  route:
+    groupBy:
+    - alertname
+    - cluster
+    - namespace
+    groupInterval: 5m
+    groupWait: 30s
+    receiver: "null"
+    repeatInterval: 4h
+    routes:
+    - continue: true
+      matchers:
+      - matchType: =
+        name: severity
+        value: critical
+      receiver: pager
+      repeatInterval: 1h
+    - matchers:
+      - matchType: =
+        name: severity
+        value: critical
+      receiver: critical-chat
+    - matchers:
+      - matchType: =
+        name: severity
+        value: warning
+      receiver: warning-chat
+      repeatInterval: 12h

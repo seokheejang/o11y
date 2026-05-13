@@ -28,15 +28,22 @@ if [[ ! -f vendor/.jb-stamp ]] || [[ jsonnetfile.lock.json -nt vendor/.jb-stamp 
     touch vendor/.jb-stamp
 fi
 
-OUT_DIRS=(prometheus-rules prometheus-rules-meta grafana-dashboards)
+OUT_DIRS=(prometheus-rules prometheus-rules-meta grafana-dashboards alertmanager-config)
+# alertmanager-config-raw는 amtool 입력용 raw 산출물 — manifests/에 잠깐 떨어졌다가
+# out/alertmanager-config-raw/로 이동된다 (kubeconform이 raw config를 K8s 리소스로 오인 방지).
+JSONNET_TMP_DIRS=(alertmanager-config-raw)
 
 echo "[build] clean manifests/{$(IFS=,; echo "${OUT_DIRS[*]}")}"
 for d in "${OUT_DIRS[@]}"; do
     rm -rf "manifests/${d:?}"
     mkdir -p "manifests/${d}"
 done
-rm -rf out/prometheus-rules-raw
-mkdir -p out/prometheus-rules-raw
+for d in "${JSONNET_TMP_DIRS[@]}"; do
+    rm -rf "manifests/${d:?}"
+    mkdir -p "manifests/${d}"
+done
+rm -rf out/prometheus-rules-raw out/alertmanager-config-raw
+mkdir -p out/prometheus-rules-raw out/alertmanager-config-raw
 
 echo "[build] jsonnet -> JSON"
 # -J vendor : 외부 mixin import path
@@ -47,6 +54,14 @@ jsonnet -J vendor -J mixins -m manifests mixins/main.libsonnet \
 
 echo "[build] JSON -> YAML cleanup"
 find manifests -type f ! -name '*.yaml' ! -name '.gitkeep' -delete
+
+echo "[build] move alertmanager-config-raw → out/ (amtool 입력, 클러스터에 sync되지 않음)"
+# main.libsonnet이 'alertmanager-config-raw/<name>' 키로 떨어뜨린 raw alertmanager.yml을
+# out/으로 이동. manifests/에 두면 kubeconform이 raw config를 K8s 리소스로 오인한다.
+if [[ -d manifests/alertmanager-config-raw ]]; then
+    mv manifests/alertmanager-config-raw/*.yaml out/alertmanager-config-raw/ 2>/dev/null || true
+    rmdir manifests/alertmanager-config-raw 2>/dev/null || true
+fi
 
 echo "[build] extract raw rules for promtool"
 for cr in manifests/prometheus-rules/*.yaml; do
@@ -59,3 +74,5 @@ echo "[build] generated:"
 find manifests -type f -name '*.yaml' | sort | sed 's/^/  /'
 echo "[build] raw rules (for promtool):"
 find out/prometheus-rules-raw -type f -name '*.yaml' | sort | sed 's/^/  /'
+echo "[build] raw alertmanager configs (for amtool):"
+find out/alertmanager-config-raw -type f -name '*.yaml' | sort | sed 's/^/  /'
