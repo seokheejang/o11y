@@ -4,3 +4,7 @@ e2e/.kubeconfig
 .DS_Store
 *.tmp
 *.swp
+
+# 로컬 전용 — 내부 환경 정보(회사 repo 경로, dev2 상태 메모 등). OSS로 push 절대 X.
+.local/
+*.code-workspace
