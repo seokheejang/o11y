@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Compile mixins/main.libsonnet → manifests/{prometheus-rules,grafana-dashboards}/*.yaml
+# Compile main.libsonnet → manifests/{prometheus-rules,grafana-dashboards,alertmanager-config}/*.yaml
 #
 # Pattern: kube-prometheus build.sh — jsonnet -m + gojsontoyaml.
 # top-level object의 슬래시 키(예: 'prometheus-rules/kubernetes')가 곧 산출 경로.
+# jsonnet 검색 경로: `-J vendor -J components` — 후자는 _lib/, _external/, <component>/ 단축 import.
 #
 # 부산물:
 #   out/prometheus-rules-raw/<name>.yaml — promtool test rules 입력용
@@ -46,10 +47,10 @@ rm -rf out/prometheus-rules-raw out/alertmanager-config-raw
 mkdir -p out/prometheus-rules-raw out/alertmanager-config-raw
 
 echo "[build] jsonnet -> JSON"
-# -J vendor : 외부 mixin import path
-# -J mixins : mixins/lib/, mixins/external/ 단축 import
-# -m manifests : top-level 키별 1파일 출력
-jsonnet -J vendor -J mixins -m manifests mixins/main.libsonnet \
+# -J vendor     : 외부 mixin import path
+# -J components : components/_lib, components/_external, components/<comp>/ 단축 import
+# -m manifests  : top-level 키별 1파일 출력
+jsonnet -J vendor -J components -m manifests main.libsonnet \
     | xargs -I{} sh -c 'cat "$1" | gojsontoyaml > "$1.yaml"' -- {}
 
 echo "[build] JSON -> YAML cleanup"

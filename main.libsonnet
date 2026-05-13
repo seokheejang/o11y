@@ -1,4 +1,4 @@
-// 빌드 진입점. tools/build.sh가 jsonnet -m으로 호출.
+// 빌드 진입점. tools/build.sh가 jsonnet -m으로 호출 (`-J vendor -J components`).
 // top-level object의 키 이름이 곧 manifests/ 아래 산출 경로가 된다.
 //   ['prometheus-rules/<name>']        -> manifests/prometheus-rules/<name>.yaml
 //   ['prometheus-rules-meta/<name>']   -> manifests/prometheus-rules-meta/<name>.yaml  (정책 위반 가시화 ConfigMap)
@@ -8,14 +8,15 @@
 //
 // 외부 mixin은 **rules만** 가져온다. 대시보드는 kube-prometheus-stack 차트가
 // 디폴트로 같은 mixin 출처의 ConfigMap을 만들어주므로 중복 회피.
-// 자체 mixin(mixins/local/*-mixin/)은 rules + dashboards + alertmanager 라우팅을 모두 가져온다.
+// 자체 컴포넌트(components/<name>/)는 자기 영역의 rules / dashboards / alertmanager
+// routing을 export 한다. 여러 컴포넌트가 합쳐서 'baseline' 운영 단위 1세트가 된다.
 
-local wrappers = import 'lib/wrappers.libsonnet';
-local transform = import 'lib/transform.libsonnet';
-local amlib = import 'lib/alertmanager.libsonnet';
+local wrappers = import '_lib/wrappers.libsonnet';
+local transform = import '_lib/transform.libsonnet';
+local amlib = import '_lib/alertmanager.libsonnet';
 
 // === 외부 mixin: kubernetes-mixin (rules only) ===
-local k8s = import 'external/kubernetes.libsonnet';
+local k8s = import '_external/kubernetes.libsonnet';
 
 // docs/baseline-alerts.md #3 합의에 따라 비활성화하는 알림.
 // 각 항목 옆 GitHub issue 링크가 disable 근거.
@@ -47,14 +48,23 @@ local k8sViolations = transform.collectViolations(k8sFilteredGroups);
 local certManagerEnabled = false;
 local cmGroups =
   if certManagerEnabled then
-    local cm = import 'external/cert-manager.libsonnet';
+    local cm = import '_external/cert-manager.libsonnet';
     if std.objectHasAll(cm, 'prometheusAlerts') && std.objectHasAll(cm.prometheusAlerts, 'groups')
     then cm.prometheusAlerts.groups
     else []
   else [];
 
-// === 자체 mixin (rules + dashboards) ===
-local baseline = import 'local/baseline-mixin/mixin.libsonnet';
+// === 자체 컴포넌트 합성 ===
+// 각 컴포넌트(components/<name>/mixin.libsonnet)가 자기 영역만 export 하고,
+// 이 파일에서 합쳐서 운영 단위 'baseline' 한 세트를 만든다.
+//   - prometheus: _config + prometheusAlerts.groups
+//   - alertmanager: alertmanagerConfig (route + receivers + inhibitRules)
+//   - grafana: grafanaDashboards (현재 비어 있음)
+local prometheus = import 'prometheus/mixin.libsonnet';
+local alertmanager = import 'alertmanager/mixin.libsonnet';
+local grafana = import 'grafana/mixin.libsonnet';
+
+local baseline = prometheus + alertmanager + grafana;
 local localMixins = [
   { name: 'baseline', m: baseline },
 ];

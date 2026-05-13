@@ -16,7 +16,7 @@ make all                      # vendor → build → test → lint
 | 스크립트 | 역할 |
 |---|---|
 | `install.sh` | 빌드/검증/e2e 도구 일괄 설치. macOS/Linux 모두 지원 |
-| `build.sh` | `mixins/main.libsonnet` → `manifests/{prometheus-rules,grafana-dashboards,alertmanager-config}/*.yaml`. [kube-prometheus build.sh](https://github.com/prometheus-operator/kube-prometheus/blob/main/build.sh) 패턴 (`jsonnet -m` + `gojsontoyaml`). `out/prometheus-rules-raw/`도 생성 — promtool은 PrometheusRule CR을 못 읽으므로 `.spec`만 추출. `out/alertmanager-config-raw/`도 생성 — amtool은 raw alertmanager.yml만 받으므로 같은 routing 객체에서 변환 |
+| `build.sh` | `main.libsonnet` → `manifests/{prometheus-rules,grafana-dashboards,alertmanager-config}/*.yaml`. [kube-prometheus build.sh](https://github.com/prometheus-operator/kube-prometheus/blob/main/build.sh) 패턴 (`jsonnet -m` + `gojsontoyaml`). `out/prometheus-rules-raw/`도 생성 — promtool은 PrometheusRule CR을 못 읽으므로 `.spec`만 추출. `out/alertmanager-config-raw/`도 생성 — amtool은 raw alertmanager.yml만 받으므로 같은 routing 객체에서 변환 |
 | `validate.sh` | `validate.sh test`(promtool + amtool) / `validate.sh lint`(kubeconform) / `validate.sh all` |
 
 Makefile에서 모두 wrapping 됨 (`make build` / `make test` / `make lint`).
