@@ -5,11 +5,15 @@
 # 기본 — 전체
 *                            @seokheejang
 
-# mixin 소스
-/mixins/                     @seokheejang
+# 컴포넌트 소스 (jsonnet)
+/components/                 @seokheejang
 
-# 빌드 산출물 (생성된 매니페스트)
+# 빌드 진입점 + 빌드 산출물
+/main.libsonnet              @seokheejang
 /manifests/                  @seokheejang
+
+# 환경 적용 자원 (helm values, ArgoCD, Secrets 패턴)
+/deploy/                     @seokheejang
 
 # 테스트
 /tests/                      @seokheejang
@@ -22,7 +26,9 @@
 /Makefile                    @seokheejang
 /jsonnetfile.json            @seokheejang
 
-# TODO: 팀 합류 시 도메인별 오너로 분리
-#   /mixins/local/rpc-mixin/   @blockchain-team
-#   /mixins/local/dns-mixin/   @platform-team
-#   /mixins/local/infra-mixin/ @sre-team
+# TODO: 팀 합류 시 도메인 컴포넌트별 오너로 분리
+#   /components/prometheus/   @sre-team
+#   /components/alertmanager/ @sre-team
+#   /components/grafana/      @sre-team
+#   /components/rpc/          @blockchain-team   (후속)
+#   /deploy/envs/             @platform-team     (환경 인프라 책임)

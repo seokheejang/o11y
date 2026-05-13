@@ -25,7 +25,7 @@
 - [KubeClientCertificateExpiration](KubeClientCertificateExpiration.md)
 - [KubeletClientCertificateExpiration](KubeletClientCertificateExpiration.md)
 
-### 자체 baseline-mixin critical
+### 자체 컴포넌트 critical
 - [PrometheusRuleFailures](PrometheusRuleFailures.md) — 메타 알림
 - [AlertmanagerConfigInconsistent](AlertmanagerConfigInconsistent.md)
 - [IngressControllerDown](IngressControllerDown.md)

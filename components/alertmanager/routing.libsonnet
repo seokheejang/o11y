@@ -3,7 +3,7 @@
 // docs/severity-policy.md "Alertmanager 라우팅 정합" 절의 설계를 그대로 옮겼다.
 //
 // 이 파일은 **routing intent** (도메인 객체)만 정의한다.
-// CR/raw alertmanager.yml 두 형식 변환은 mixins/lib/alertmanager.libsonnet 헬퍼가 한다.
+// CR/raw alertmanager.yml 두 형식 변환은 components/_lib/alertmanager.libsonnet 헬퍼가 한다.
 //
 // 단일 source-of-truth 원칙: receiver 이름/severity 매처/inhibit 키는 여기 한 곳만 수정.
 //

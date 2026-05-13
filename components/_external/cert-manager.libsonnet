@@ -4,7 +4,7 @@
 //   1) jsonnetfile.json에 의존성 추가:
 //        jb install github.com/imusmanmalik/cert-manager-mixin@master
 //
-//   2) mixins/main.libsonnet에서 certManagerEnabled = true로 변경.
+//   2) main.libsonnet에서 certManagerEnabled = true로 변경.
 //      그러면 main이 이 파일을 import하여 prometheusAlerts.groups를 합성한다.
 //
 //   3) make build && make test 통과 확인.

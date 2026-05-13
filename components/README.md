@@ -38,4 +38,4 @@ local baseline = prometheus + alertmanager + grafana;
 3. `main.libsonnet`의 `baseline = prometheus + alertmanager + grafana + <domain>` 추가
 4. `make build/test/lint` 통과 확인
 
-상세 가이드는 [docs/adding-a-mixin.md](../docs/adding-a-mixin.md) (후속에서 `adding-a-component.md`로 갱신 예정).
+상세 가이드는 [docs/adding-a-component.md](../docs/adding-a-component.md).

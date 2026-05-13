@@ -19,9 +19,9 @@
 | 항목 | 값 |
 |---|---|
 | Component | cert-manager controller + ServiceMonitor (포트 9402 스크랩) |
-| Why | `mixins/external/cert-manager.libsonnet` mixin 활성화 시 — `CertManagerCertExpirySoon` (30d/7d), `CertManagerCertNotReady` 등 |
+| Why | `components/_external/cert-manager.libsonnet` mixin 활성화 시 — `CertManagerCertExpirySoon` (30d/7d), `CertManagerCertNotReady` 등 |
 | Status in repo | ❌ wrap stub만 있음, 디폴트 OFF |
-| How to enable in fork | (1) cert-manager 설치 (Helm), (2) cert-manager Service에 `prometheus.io/scrape: "true"` annotation 또는 ServiceMonitor 직접 생성, (3) `mixins/main.libsonnet`의 `certManagerEnabled: false` → `true`, (4) `jb install github.com/imusmanmalik/cert-manager-mixin@master`, (5) `make all` |
+| How to enable in fork | (1) cert-manager 설치 (Helm), (2) cert-manager Service에 `prometheus.io/scrape: "true"` annotation 또는 ServiceMonitor 직접 생성, (3) `main.libsonnet`의 `certManagerEnabled: false` → `true`, (4) `jb install github.com/imusmanmalik/cert-manager-mixin@master`, (5) `make all` |
 
 ### kube-proxy ServiceMonitor (재활성화 후보)
 
@@ -30,7 +30,7 @@
 | Component | kube-proxy ServiceMonitor (kube-prometheus-stack values에서 활성화) |
 | Why | kubernetes-mixin `KubeProxyDown` 알림 재활성화 |
 | Status in repo | ❌ disable됨 ([kube-prometheus#1602](https://github.com/prometheus-operator/kube-prometheus/issues/1602) — PodMonitor OFF, always firing) |
-| How to enable in fork | kube-prometheus-stack values에서 `kubeProxy.enabled: true` + kube-proxy의 metrics bind address 0.0.0.0 변경. 그 후 `mixins/main.libsonnet`의 `k8sDisabledAlerts`에서 `KubeProxyDown` 줄 삭제. |
+| How to enable in fork | kube-prometheus-stack values에서 `kubeProxy.enabled: true` + kube-proxy의 metrics bind address 0.0.0.0 변경. 그 후 `main.libsonnet`의 `k8sDisabledAlerts`에서 `KubeProxyDown` 줄 삭제. |
 
 ### CoreDNS 임계값 mixin 표준 적용
 
@@ -39,7 +39,7 @@
 | Component | 환경별 트래픽 baseline 검증 후 임계값 조정 |
 | Why | 현재 `CoreDNSLatencyHigh: p99 > 1s`, `CoreDNSErrorsHigh: ratio > 5%`. CoreDNS mixin 표준은 4s / 3%. |
 | Status in repo | ⚠️ 자체값(빡빡함) 적용 중 — dev/staging에서 노이즈 가능성 |
-| How to enable in fork | 환경에서 1주 메트릭 수집 후 p99/error ratio 분포 확인, `mixins/local/baseline-mixin/config.libsonnet` thresholds 조정 |
+| How to enable in fork | 환경에서 1주 메트릭 수집 후 p99/error ratio 분포 확인, `components/prometheus/config.libsonnet` thresholds 조정 |
 
 ### Ingress NGINX metrics
 
@@ -48,7 +48,7 @@
 | Component | ingress-nginx controller `--enable-metrics=true` (디폴트) + ServiceMonitor |
 | Why | `HighIngress5xxRate`, `HighIngress4xxRate` |
 | Status in repo | ✅ selector는 standard 라벨 가정 (`job=~"ingress-nginx-controller-metrics\|nginx-ingress.*"`) |
-| How to enable in fork | ingress controller가 다른 차트면 `mixins/local/baseline-mixin/config.libsonnet`의 `ingressControllerSelector` override |
+| How to enable in fork | ingress controller가 다른 차트면 `components/prometheus/config.libsonnet`의 `ingressControllerSelector` override |
 
 ### node-exporter (conntrack / NIC 메트릭)
 
