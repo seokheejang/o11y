@@ -1,0 +1,24 @@
+# Alertmanager CR 패치 — `alertmanagerConfigMatcherStrategy.type: None`.
+#
+# 부모 Alertmanager CR(operator가 chart values로부터 생성)에 이 strategic-merge patch를 얹어서
+# AlertmanagerConfig CR의 routes에 namespace matcher가 자동 prepend 되지 않게 한다.
+#
+# helm chart의 `alertmanager.alertmanagerSpec.alertmanagerConfigMatcherStrategy` values로
+# 이미 처리되지만, 외부 helm release(chart 버전 차이 등으로 values 적용 안 되는 케이스) 또는
+# patch-only 운영 흐름을 위한 fallback. ArgoCD App에서 directly apply 하지 않고,
+# kubectl 수동 패치용 reference로 두는 자원.
+#
+# 적용 예:
+#   kubectl -n monitoring patch alertmanager <name> \
+#     --type=merge --patch-file=deploy/envs/_base/patches/alertmanager-matcherstrategy.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  # name은 환경별로 다름 (`<helm-release>-alertmanager` 패턴 흔함).
+  # 적용 시 `--patch` 명령에 직접 name 지정.
+  name: replace-with-alertmanager-cr-name
+  namespace: monitoring
+spec:
+  alertmanagerConfigMatcherStrategy:
+    type: None

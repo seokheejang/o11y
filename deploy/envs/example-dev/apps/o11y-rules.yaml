@@ -1,0 +1,39 @@
+# 자체 mixin이 빌드한 PrometheusRule / AlertmanagerConfig / dashboard ConfigMap을 sync.
+#
+# manifests/ 디렉토리는 jsonnet 빌드 산출물이라 환경에 무관 — 모든 env의 이 Application이
+# 같은 path를 sync 한다. env-specific 변이는 chart values에서만 처리 (라우팅/임계값 자체는
+# 모든 env 동일하다는 우리 정책 — fork에서 라우팅 분기 필요하면 main.libsonnet 수정).
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: replace-env-name-o11y-rules
+  namespace: argocd
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    env: replace-env-name
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: REPLACE_WITH_REPO_URL
+    targetRevision: HEAD
+    path: manifests
+    directory:
+      recurse: true
+      # prometheus-rules-meta는 ConfigMap 형태로 정책 위반 visibility용 — sync는 유지.
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  # kube-prometheus-stack Application과 sync wave로 순서 보장 (chart 먼저, 그다음 우리 룰)
+  # ApplicationSet 수준의 wave 지원이 제한적이라 여기서는 child Application 자체에 annotation.
+  # annotations:
+  #   argocd.argoproj.io/sync-wave: "1"

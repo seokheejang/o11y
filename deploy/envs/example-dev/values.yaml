@@ -1,0 +1,44 @@
+# env-specific helm values overlay (예시 dev 환경).
+#
+# `deploy/envs/_base/values-base.yaml`과 ArgoCD multi-source로 머지된다. 머지 순서:
+# 1) values-base.yaml — 환경 공통 override
+# 2) 이 파일 — 환경 특정 override (cluster label, ingress hosts, retention 등)
+#
+# fork 받은 운영자는 이 파일을 카피해서 `deploy/envs/<your-env>/values.yaml`을 만들고
+# 아래 REPLACE_* 토큰을 채운다. env 이름은 ApplicationSet generator의 파라미터로도 들어가므로
+# 카피본 디렉토리명과 정합 유지.
+
+prometheus:
+  prometheusSpec:
+    # 멀티 클러스터 알림 식별 + inhibit rule의 `equal: [..., cluster, ...]` 정상 동작에 필요.
+    externalLabels:
+      cluster: REPLACE_WITH_CLUSTER_NAME   # 예: dev-us-east-1, dev-eu-west-1
+
+    # retention / resources 등 환경별 튜닝. 디폴트는 chart 값.
+    # retention: 30d
+    # resources:
+    #   requests:
+    #     memory: 2Gi
+    #     cpu: 500m
+
+grafana:
+  # ingress hosts / TLS / OIDC 등은 환경별. 예시는 모두 주석.
+  # ingress:
+  #   enabled: true
+  #   hosts:
+  #     - grafana.<your-env>.example.com
+  #   tls:
+  #     - secretName: grafana-tls
+  #       hosts:
+  #         - grafana.<your-env>.example.com
+  # grafana.ini:
+  #   auth.generic_oauth:
+  #     enabled: true
+  #     name: <your-IdP>
+  #     ...
+
+# Alertmanager ingress / clustering은 환경별.
+# alertmanager:
+#   alertmanagerSpec:
+#     replicas: 3
+#     externalUrl: https://alertmanager.<your-env>.example.com
