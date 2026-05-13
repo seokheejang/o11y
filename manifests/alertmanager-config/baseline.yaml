@@ -35,7 +35,45 @@ spec:
   - name: "null"
   - name: pager
   - name: critical-chat
+    slackConfigs:
+    - apiURL:
+        key: url
+        name: alertmanager-slack-webhook
+      color: danger
+      sendResolved: true
+      text: |
+        {{ range .Alerts -}}
+        *Severity:* `{{ .Labels.severity }}`
+        *Alert:* {{ .Labels.alertname }}{{ if .Labels.namespace }} | ns: `{{ .Labels.namespace }}`{{ end }}
+        {{ if .Annotations.summary }}*Summary:* {{ .Annotations.summary }}
+        {{ end -}}
+        {{ if .Annotations.description }}*Description:* {{ .Annotations.description }}
+        {{ end -}}
+        {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}
+        {{ end -}}
+        ---
+        {{ end }}
+      title: '[CRITICAL] {{ .GroupLabels.alertname }}{{ if .GroupLabels.namespace }} ({{ .GroupLabels.namespace }}){{ end }}'
   - name: warning-chat
+    slackConfigs:
+    - apiURL:
+        key: url
+        name: alertmanager-slack-webhook
+      color: warning
+      sendResolved: true
+      text: |
+        {{ range .Alerts -}}
+        *Severity:* `{{ .Labels.severity }}`
+        *Alert:* {{ .Labels.alertname }}{{ if .Labels.namespace }} | ns: `{{ .Labels.namespace }}`{{ end }}
+        {{ if .Annotations.summary }}*Summary:* {{ .Annotations.summary }}
+        {{ end -}}
+        {{ if .Annotations.description }}*Description:* {{ .Annotations.description }}
+        {{ end -}}
+        {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}
+        {{ end -}}
+        ---
+        {{ end }}
+      title: '[WARNING] {{ .GroupLabels.alertname }}{{ if .GroupLabels.namespace }} ({{ .GroupLabels.namespace }}){{ end }}'
   route:
     groupBy:
     - alertname

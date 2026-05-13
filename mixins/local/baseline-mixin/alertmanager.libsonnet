@@ -7,19 +7,70 @@
 //
 // 단일 source-of-truth 원칙: receiver 이름/severity 매처/inhibit 키는 여기 한 곳만 수정.
 //
-// receiver 이름은 placeholder. 실제 webhook/PagerDuty Secret 연결은 후속 PR에서 처리한다.
-// 디폴트 receiver "null" — 매치되지 않은 알림은 silently drop (Alertmanager 컨벤션).
+// Receiver 와이어링:
+//   - pager: placeholder 유지 (PagerDuty 도입 시 pagerdutyConfigs 채움). 현재 매처는 통과하지만
+//     pagerduty_configs가 없어 silent drop — routing intent는 유지.
+//   - critical-chat / warning-chat: Slack 단일 채널, 동일 webhook Secret. severity는 메시지
+//     color/title prefix로 구분. 추후 채널 분리 시 webhook Secret만 갈아끼우면 됨.
+//
+// Slack Secret 컨벤션 (환경 인프라에서 생성):
+//   - 이름: `alertmanager-slack-webhook` (monitoring ns)
+//   - 키: `url` → Slack incoming webhook URL
+//   - 자세한 가이드: docs/alerting-philosophy.md "Slack receiver Secret" 절
 
 {
+  // === Slack 메시지 템플릿 ===
+  // alertmanager Go template 문법. critical/warning이 같은 webhook을 쓰므로 title prefix와
+  // color로 시각적 구분.
+  local slackTitle(severityLabel) =
+    '[%s] {{ .GroupLabels.alertname }}' % severityLabel +
+    '{{ if .GroupLabels.namespace }} ({{ .GroupLabels.namespace }}){{ end }}',
+
+  local slackText = |||
+    {{ range .Alerts -}}
+    *Severity:* `{{ .Labels.severity }}`
+    *Alert:* {{ .Labels.alertname }}{{ if .Labels.namespace }} | ns: `{{ .Labels.namespace }}`{{ end }}
+    {{ if .Annotations.summary }}*Summary:* {{ .Annotations.summary }}
+    {{ end -}}
+    {{ if .Annotations.description }}*Description:* {{ .Annotations.description }}
+    {{ end -}}
+    {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}
+    {{ end -}}
+    ---
+    {{ end }}
+  |||,
+
+  // Slack webhook Secret 참조 (환경 인프라가 monitoring ns에 생성).
+  local slackSecretRef = {
+    name: 'alertmanager-slack-webhook',
+    key: 'url',
+  },
+
   // === Receiver 정의 ===
-  // 실제 endpoint는 환경별 fork에서 webhookConfigs/slackConfigs/pagerdutyConfigs로 채운다.
-  // 여기서는 "null receiver" + 빈 webhook placeholder만 둔다 — amtool config check가
-  // 통과할 수 있는 최소 구조.
+  // pager는 placeholder 유지 (endpoint 없으면 silent drop — Alertmanager 합법 패턴).
   local receivers = [
-    { name: 'null' },                  // catch-all drop
-    { name: 'pager' },                 // critical → PagerDuty/Opsgenie
-    { name: 'critical-chat' },         // critical → Slack #alerts-critical
-    { name: 'warning-chat' },          // warning → Slack #alerts-warning
+    { name: 'null' },  // catch-all drop
+    { name: 'pager' },  // critical → PagerDuty (도입 시 pagerdutyConfigs 채움)
+    {
+      name: 'critical-chat',
+      slackConfigs: [{
+        apiURL: slackSecretRef,
+        sendResolved: true,
+        color: 'danger',  // Slack 표준 red
+        title: slackTitle('CRITICAL'),
+        text: slackText,
+      }],
+    },
+    {
+      name: 'warning-chat',
+      slackConfigs: [{
+        apiURL: slackSecretRef,
+        sendResolved: true,
+        color: 'warning',  // Slack 표준 yellow
+        title: slackTitle('WARNING'),
+        text: slackText,
+      }],
+    },
   ],
 
   // === Routing tree ===

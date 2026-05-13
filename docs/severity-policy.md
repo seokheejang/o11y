@@ -81,13 +81,45 @@ inhibit_rules:
 | `severity=warning, ...` | `warning-chat` |
 | `severity=info` 또는 누락 | `null` (drop) |
 
-receiver 이름(`pager`, `critical-chat`, `warning-chat`, `null`)은 placeholder다.
-실제 endpoint(Slack webhook, PagerDuty integration key 등) 연결은 클러스터 sync PR에서.
+### Receiver 와이어링
+
+| Receiver | 매처 | endpoint 상태 | 비고 |
+|---|---|---|---|
+| `null` | catch-all | 없음 (drop) | Alertmanager 컨벤션 |
+| `pager` | `severity=critical` (`continue=true`) | **placeholder** — `pagerdutyConfigs` 미연결 | 매처는 통과하지만 dispatch 시점에 silent drop. PagerDuty 도입 시 receiver config만 채우면 됨 |
+| `critical-chat` | `severity=critical` | **Slack** (`slackConfigs` 와이어링됨) | color: `danger`, title prefix: `[CRITICAL]` |
+| `warning-chat` | `severity=warning` | **Slack** (`slackConfigs` 와이어링됨) | color: `warning`, title prefix: `[WARNING]` |
+
+#### Slack receiver Secret
+
+`critical-chat` / `warning-chat`이 같은 Slack incoming webhook을 공유한다 (단일 채널). severity 구분은 메시지의 color와 title prefix로 한다 — 추후 채널을 분리할 때는 webhook Secret 또는 receiver별 SecretKeySelector만 바꾸면 됨.
+
+환경 인프라가 `monitoring` 네임스페이스에 다음 Secret을 생성해야 한다:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-slack-webhook
+  namespace: monitoring
+type: Opaque
+stringData:
+  url: https://hooks.slack.com/services/XXX/XXX/XXX   # 실제 webhook URL
+```
+
+생성 방법은 클러스터별로 다름 (SealedSecret, ExternalSecrets, GitOps secret store 등) — 이 repo는 Secret 자체를 만들지 않는다.
+
+E2E 클러스터(`make e2e-up`)는 placeholder URL(`https://hooks.slack.com/services/PLACEHOLDER/...`)로 동일한 이름의 Secret을 자동 생성한다 — admission/operator reload만 검증하면 충분하므로 실 Slack에 dispatch되지 않는다.
+
+#### Namespace 스코프 (matcherStrategy)
+
+위 라우팅이 cluster-wide alert(예: `KubePodNotReady@prod-app`)에 적용되려면 부모 Alertmanager CR이 `spec.alertmanagerConfigMatcherStrategy.type: None` 으로 설정되어야 한다. 디폴트 `OnNamespace`는 operator가 routes에 `namespace="<AMC ns>"` 매처를 자동 prepend하여 monitoring ns alert만 통과시킨다. 자세한 근거: [learnings/2026-05-13-alertmanager-matcher-strategy.md](learnings/2026-05-13-alertmanager-matcher-strategy.md).
 
 ## 변경 이력
 
 - 2026-05-05 — 정책 초안
 - 2026-05-07 — AlertmanagerConfig CR 렌더링 + amtool 단언 (라우팅 PR)
+- 2026-05-13 — Slack receiver 와이어링 (critical-chat/warning-chat). pager는 placeholder 유지.
 
 ## 참고
 
