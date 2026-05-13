@@ -1,0 +1,35 @@
+# kube-prometheus-stack chart values — 환경 공통 베이스.
+# env-specific override는 `deploy/envs/<env>/values.yaml`에서 머지된다 (ArgoCD multi-source).
+#
+# 이 베이스는 OSS bootstrap을 fork 받은 운영자가 "운영 환경에서 거의 항상 필요한 override"만
+# 담는다. 환경 식별자 / 시크릿 값은 X.
+
+# === 우리 mixin이 만든 PrometheusRule만 pickup 하도록 ===
+# chart 디폴트 `defaultRules.create=true`는 35개 chart 자체 룰을 만들어 우리 mixin과 중복 발화.
+# 우리는 kubernetes-mixin import + disabled list로 한 군데서 관리하므로 OFF.
+defaultRules:
+  create: false
+
+prometheus:
+  prometheusSpec:
+    # 우리 wrapper가 PrometheusRule에 다는 라벨에 맞춰 selector 좁힘.
+    # chart 디폴트 selector(release=<release-name>)는 우리 룰을 못 찾는다.
+    ruleSelectorNilUsesHelmValues: false
+    ruleSelector:
+      matchLabels:
+        app.kubernetes.io/managed-by: o11y
+
+    # AlertmanagerConfig matcherStrategy.type=None을 안 켜면 우리 라우팅이 monitoring ns
+    # alert만 통과. 부모 Alertmanager CR에서 강제. 자세한 근거:
+    # docs/learnings/2026-05-13-alertmanager-matcher-strategy.md
+    # (이 베이스는 prometheus.spec만 정의 — Alertmanager CR patch는 patches/ 디렉토리에 별도)
+
+alertmanager:
+  alertmanagerSpec:
+    # 단일 운영팀이 클러스터 전역 알림 받으려면 None. multi-tenant 격리가 필요하면 OnNamespace 유지.
+    alertmanagerConfigMatcherStrategy:
+      type: None
+
+# === ServiceMonitor selector 좁히지 않음 ===
+# chart 디폴트는 자기가 만든 ServiceMonitor만 픽업. 우리는 아직 자체 ServiceMonitor 없음.
+# 환경에서 자체 ServiceMonitor 추가 시 selector를 env values에서 override.

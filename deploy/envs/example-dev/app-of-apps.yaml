@@ -1,0 +1,38 @@
+# env의 App-of-Apps root Application.
+#
+# ApplicationSet(`deploy/argocd/appset-o11y.yaml`)이 envs/* 디렉토리를 발견해서 generate.
+# 환경 추가는 새 디렉토리 + 파일들만 만들면 ApplicationSet이 자동으로 새 root App 생성 →
+# 이 root가 `apps/*.yaml`을 child Application으로 sync.
+#
+# 사용자가 fork 받은 후엔 ApplicationSet이 자동 처리하므로 이 파일을 직접 apply 할 필요 없음.
+# ApplicationSet의 git directory generator template으로 작성되어 있음을 참고용으로 둠.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: replace-env-name-o11y    # 예: dev-us-east-1-o11y
+  namespace: argocd
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/component: app-of-apps
+    env: replace-env-name
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: REPLACE_WITH_REPO_URL    # 카피본 git URL
+    targetRevision: HEAD
+    path: deploy/envs/replace-env-name/apps
+    directory:
+      recurse: false
+  destination:
+    server: https://kubernetes.default.svc   # in-cluster ArgoCD가 같은 클러스터에 sync
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
