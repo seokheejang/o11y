@@ -2,12 +2,14 @@
 # 디폴트(2Gi+ memory, retention 10d)면 kind 노드에서 OOMKill 위험.
 #
 # 끄는 것:
-#   - alertmanager  : 4차 PR(라우팅) 시점에 켬
+#   - alertmanager  : AMC admit + raw amtool 검증으로 라우팅 정확성 보장됨. 본체 띄울 필요 X.
 #   - nodeExporter  : kind 노드의 호스트 메트릭은 e2e에서 의미 없음
 #
 # 켜놓는 것:
 #   - prometheus, grafana, kube-state-metrics, prometheus-operator
 #     (rule reload + dashboard sidecar 동작 검증 목적)
+#
+# 의도적으로 dev2(내부 배포 환경)와 정합 강제하지 않음 — e2e는 OSS 최신 stable 기준 단순 기능 검증.
 
 defaultRules:
   create: false  # 우리는 자체 mixin이 만든 룰을 apply 한다 — 차트 기본 룰과 중복 회피.

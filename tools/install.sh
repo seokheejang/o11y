@@ -20,8 +20,8 @@ set -euo pipefail
 JSONNET_VERSION="v0.20.0"
 JB_VERSION="v0.6.0"
 GOJSONTOYAML_VERSION="latest"
-PROMTOOL_VERSION="2.55.1"
-ALERTMANAGER_VERSION="0.27.0"  # amtool — alertmanager 본체 tarball에서 추출
+PROMTOOL_VERSION="3.11.3"      # Prometheus 본체 tarball에서 추출. kube-prometheus-stack 85.x와 정합.
+ALERTMANAGER_VERSION="0.32.1"  # amtool — alertmanager 본체 tarball에서 추출
 KUBECONFORM_VERSION="0.6.7"
 YQ_VERSION="4.45.1"  # mikefarah yq v4 — Linux fallback에서 핀해서 공급망 공격 면적 축소
 

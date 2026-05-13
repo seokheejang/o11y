@@ -16,7 +16,7 @@ source "${SCRIPT_DIR}/common.sh"
 CLUSTER_NAME="o11y-e2e"
 MONITORING_NAMESPACE="monitoring"
 KPS_RELEASE="kps"
-KPS_CHART_VERSION="65.5.0"  # kube-prometheus-stack — 2024-11 안정 버전 (Prom 2.55+)
+KPS_CHART_VERSION="85.0.2"  # kube-prometheus-stack — operator v0.90.1 (Prom 3.11). AMC CR은 v1alpha1 유지.
 GRAFANA_PASSWORD="admin"
 
 # --- Parse command + flags ---
