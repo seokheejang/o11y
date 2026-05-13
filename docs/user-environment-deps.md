@@ -22,7 +22,6 @@
 | Why | `mixins/external/cert-manager.libsonnet` mixin 활성화 시 — `CertManagerCertExpirySoon` (30d/7d), `CertManagerCertNotReady` 등 |
 | Status in repo | ❌ wrap stub만 있음, 디폴트 OFF |
 | How to enable in fork | (1) cert-manager 설치 (Helm), (2) cert-manager Service에 `prometheus.io/scrape: "true"` annotation 또는 ServiceMonitor 직접 생성, (3) `mixins/main.libsonnet`의 `certManagerEnabled: false` → `true`, (4) `jb install github.com/imusmanmalik/cert-manager-mixin@master`, (5) `make all` |
-| 관찰된 사용 패턴 (dev2, 2026-05-07) | cert-manager 설치됨, 자체 mTLS 인증서 발급 (selfsigned-issuer + MongoDB), 메트릭 포트 9402 노출됨, **ServiceMonitor 없음** |
 
 ### kube-proxy ServiceMonitor (재활성화 후보)
 

@@ -9,7 +9,7 @@
 #   - prometheus, grafana, kube-state-metrics, prometheus-operator
 #     (rule reload + dashboard sidecar 동작 검증 목적)
 #
-# 의도적으로 dev2(내부 배포 환경)와 정합 강제하지 않음 — e2e는 OSS 최신 stable 기준 단순 기능 검증.
+# 의도적으로 내부 배포 환경과 정합 강제하지 않음 — e2e는 OSS 최신 stable 기준 단순 기능 검증.
 
 defaultRules:
   create: false  # 우리는 자체 mixin이 만든 룰을 apply 한다 — 차트 기본 룰과 중복 회피.
