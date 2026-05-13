@@ -16,7 +16,7 @@
 // Slack Secret 컨벤션 (환경 인프라에서 생성):
 //   - 이름: `alertmanager-slack-webhook` (monitoring ns)
 //   - 키: `url` → Slack incoming webhook URL
-//   - 자세한 가이드: docs/alerting-philosophy.md "Slack receiver Secret" 절
+//   - 자세한 가이드: docs/severity-policy.md "Receiver 와이어링 > Slack receiver Secret" 절
 
 {
   // === Slack 메시지 템플릿 ===
