@@ -43,10 +43,11 @@ Kubernetes 클러스터에서 동작하는 [`kube-prometheus-stack`](https://git
 │   └── grafana-dashboards/       # ConfigMap (grafana_dashboard="1" 라벨)
 │
 ├── deploy/                   # 환경 적용 scaffold (카피 후 fork 운영자가 직접 채움)
-│   ├── envs/_base/               # 환경 공통 chart values + AM CR patch
-│   ├── envs/example-dev/         # 카피용 placeholder env (REPLACE_* 토큰)
-│   ├── secrets/{sealed,eso,scripts}/  # Sealed / ExternalSecrets / envsubst 패턴
-│   └── argocd/appset-o11y.yaml   # ApplicationSet (multi-env 자동 generate)
+│   ├── envs/_base/                          # 환경 공통 chart values + AM CR patch
+│   ├── envs/example-dev/                    # 카피용 placeholder env (REPLACE_* 토큰)
+│   ├── envs/<provider>-<stage>-<cluster>/   # 실 환경 — cluster Secret 라벨에 매핑
+│   ├── secrets/{sealed,eso,scripts}/        # Sealed / ExternalSecrets / envsubst 패턴
+│   └── argocd/appset-o11y.yaml              # multi-cluster ApplicationSet (Cluster Generator + labels)
 │
 ├── tests/                    # promtool test rules + amtool routing 단언 입력
 │
@@ -137,6 +138,7 @@ AlertmanagerConfig CR(`monitoring.coreos.com/v1alpha1`)의 spec은 **raw alertma
 | [Severity Policy](docs/severity-policy.md) | `critical` / `warning` 2단계만. 채널/응답 기대 매핑 |
 | [Adding a Component](docs/adding-a-component.md) | 외부 mixin import / 자체 컴포넌트 작성 컨벤션 |
 | [Deploying](docs/deploying.md) | fork 카피 후 환경 적용 체크리스트 (helm values + ArgoCD + Secrets) |
+| [Cluster labels](docs/cluster-labels.md) | cluster Secret 라벨 컨벤션 (ApplicationSet Cluster Generator 기반) |
 | [Runbooks](docs/runbooks/) | 알림별 대응 절차서 (`runbook_url` annotation 대상) |
 
 ## Roadmap
@@ -169,11 +171,17 @@ AlertmanagerConfig CR(`monitoring.coreos.com/v1alpha1`)의 spec은 **raw alertma
 - [x] amtool 통합 — `check-config` + `config routes test` 단언 (`tests/alertmanager-routing.sh`)
 - [x] Slack receiver 와이어링 (critical/warning color split + pager placeholder)
 
-### ✅ OSS bootstrap — 구조 + scaffold (현재)
+### ✅ OSS bootstrap — 구조 + scaffold
 - [x] `components/<name>/` 컴포넌트 재구성 (prometheus / alertmanager / grafana)
 - [x] `deploy/envs/`, `deploy/secrets/{sealed,eso,scripts}/`, `deploy/argocd/appset-o11y.yaml`
 - [x] `docs/deploying.md` — fork 카피 후 환경 적용 체크리스트
 - [x] `docs/adding-a-component.md` — 컴포넌트 추가 컨벤션
+
+### ✅ ApplicationSet Cluster Generator 마이그레이션 (현재)
+- [x] list generator → **Cluster Generator + `o11y/*` labels** — cluster Secret 라벨로 차원 표현
+- [x] `docs/cluster-labels.md` — 라벨 컨벤션 reference
+- [x] `docs/deploying.md` — cluster Secret 라벨링 흐름 반영
+- [x] `docs/learnings/2026-05-14-argocd-appset-cluster-generator.md` — best-practice 박제
 
 ### 🚧 첫 도메인 컴포넌트 PR — 후속
 - [ ] `components/rpc/` — 블록 헤드/peer/sync 알림 + 패널 1세트
