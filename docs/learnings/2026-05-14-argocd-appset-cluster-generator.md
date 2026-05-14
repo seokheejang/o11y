@@ -81,7 +81,7 @@ template:
 | [Red Hat — GitOps directory structure](https://developers.redhat.com/articles/2022/09/07/how-set-your-gitops-directory-structure) | 블로그(2022) | Conway's Law, monorepo vs polyrepo |
 | [Cloudogu GitOps Patterns Part 6](https://platform.cloudogu.com/en/blog/gitops-repository-patterns-part-6-examples/) | 블로그 | anti-patterns |
 | [Codefresh ArgoCD anti-patterns](https://codefresh.io/blog/argo-cd-anti-patterns-for-gitops/) | 블로그(Argo 진영) | promotion anti-pattern |
-| [Akuity GitOps best practices](https://akuity.io/blog/gitops-best-practices-whitepaper) | 블로그(Argo 메인테이너 회사) | monorepo+overlay 표준 |
+| [Akuity GitOps best practices](https://akuity.io/blog/gitops-best-practices-whitepaper) | 블로그(Argo 메인테이너 진영) | monorepo+overlay 표준 |
 | [monday.com — multi-cluster engineering](https://engineering.monday.com/building-a-resilient-and-scalable-infrastructure-with-kubernetes-multi-cluster/) | 엔지니어링 블로그 | snowflake / blast-radius lessons |
 
 ⚠️ **제외(AI 의심)**: `oneuptime.com/blog/2026-02-*` 류 다수 — 1차 출처 부재, 동일 패턴 글이 짧은 기간에 여러 개. 보조 참고로도 X.
