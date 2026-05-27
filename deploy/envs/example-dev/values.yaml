@@ -21,8 +21,12 @@ prometheus:
     #     memory: 2Gi
     #     cpu: 500m
 
-grafana:
-  # ingress hosts / TLS / OIDC 등은 환경별. 예시는 모두 주석.
+# grafana 키는 _base/values-base.yaml에서 grafana.operator 설정을 들고 있다 — env override가 없으면
+# 헤더를 박지 않는다 (빈 `grafana:` 헤더는 yaml merge에서 _base를 null로 덮어쓴다 → chart render fail).
+# 실 env override 필요 시 헤더 + 본문 둘 다 활성화.
+#
+# grafana:
+#   # ingress hosts / TLS / OIDC 등은 환경별. 예시는 모두 주석.
   # ingress:
   #   enabled: true
   #   hosts:

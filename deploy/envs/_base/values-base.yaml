@@ -33,3 +33,11 @@ alertmanager:
 # === ServiceMonitor selector 좁히지 않음 ===
 # chart 디폴트는 자기가 만든 ServiceMonitor만 픽업. 우리는 아직 자체 ServiceMonitor 없음.
 # 환경에서 자체 ServiceMonitor 추가 시 selector를 env values에서 override.
+
+# === Grafana subchart nil-pointer 회피 (chart 82.12.x 일부 버전) ===
+# `helm template` 시 grafana 서브차트의 templates/grafana/dashboards-1.14/*.yaml 이
+# `.Values.grafana.operator.dashboardsConfigMapRefEnabled`를 평가하다 nil pointer로 fail.
+# 명시적 false로 안전 디폴트 박음 (ArgoCD chart Application sync 시에도 동일 render path).
+grafana:
+  operator:
+    dashboardsConfigMapRefEnabled: false
