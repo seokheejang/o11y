@@ -21,25 +21,47 @@ prometheus:
     #     memory: 2Gi
     #     cpu: 500m
 
+    # 시계열 데이터 PVC — App 삭제/prune 시 데이터 손실을 막는 안전 패턴.
+    # `Delete=false,Prune=false` 어노테이션 + storageClass `reclaimPolicy=Retain` 권장
+    # (chart App 수동 sync와 함께 3중방어를 구성: docs/learnings/2026-05-21-* 참조).
+    # storageSpec:
+    #   volumeClaimTemplate:
+    #     metadata:
+    #       annotations:
+    #         argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    #     spec:
+    #       accessModes: [ReadWriteOnce]
+    #       resources: { requests: { storage: 50Gi } }
+    #       storageClassName: <retain-storageclass>
+
 # grafana 키는 _base/values-base.yaml에서 grafana.operator 설정을 들고 있다 — env override가 없으면
 # 헤더를 박지 않는다 (빈 `grafana:` 헤더는 yaml merge에서 _base를 null로 덮어쓴다 → chart render fail).
 # 실 env override 필요 시 헤더 + 본문 둘 다 활성화.
 #
 # grafana:
+#   # 대시보드·datasource 설정을 PVC에 보존하는 경우 — chart App 삭제/prune 시 데이터 손실 방지.
+#   # persistence:
+#   #   enabled: true
+#   #   annotations:
+#   #     argocd.argoproj.io/sync-options: Prune=false,Delete=false
+#   #   type: pvc
+#   #   size: 10Gi
+#   #   storageClassName: <retain-storageclass>
+#
 #   # ingress hosts / TLS / OIDC 등은 환경별. 예시는 모두 주석.
-  # ingress:
-  #   enabled: true
-  #   hosts:
-  #     - grafana.<your-env>.example.com
-  #   tls:
-  #     - secretName: grafana-tls
-  #       hosts:
-  #         - grafana.<your-env>.example.com
-  # grafana.ini:
-  #   auth.generic_oauth:
-  #     enabled: true
-  #     name: <your-IdP>
-  #     ...
+#   # ingress:
+#   #   enabled: true
+#   #   hosts:
+#   #     - grafana.<your-env>.example.com
+#   #   tls:
+#   #     - secretName: grafana-tls
+#   #       hosts:
+#   #         - grafana.<your-env>.example.com
+#   # grafana.ini:
+#   #   auth.generic_oauth:
+#   #     enabled: true
+#   #     name: <your-IdP>
+#   #     ...
 
 # Alertmanager ingress / clustering은 환경별.
 # alertmanager:

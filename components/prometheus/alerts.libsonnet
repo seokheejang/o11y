@@ -11,6 +11,9 @@
 
 {
   prometheusAlerts+:: {
+    // baseline-network group은 ingress-nginx 메트릭에 의존. ingress controller가 없는 클러스터
+    // (Gateway API, traefik, 또는 ingress 미사용)에서는 `_config.ingressControllerEnabled=false`로
+    // group 자체를 비활성화 — `absent(up{...})` 영구 firing 및 dormant 룰 누적 회피.
     groups+: [
       {
         name: 'baseline-meta',
@@ -43,6 +46,7 @@
           },
         ],
       },
+    ] + (if $._config.ingressControllerEnabled then [
       {
         name: 'baseline-network',
         rules: [
@@ -94,6 +98,7 @@
           },
         ],
       },
+    ] else []) + [
       {
         name: 'baseline-dns',
         rules: [

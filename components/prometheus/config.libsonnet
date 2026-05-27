@@ -8,6 +8,10 @@
     alertmanagerSelector: 'job=~"alertmanager-main|kps-kube-prometheus-stack-alertmanager"',
     corednsSelector: 'job=~"kube-dns|coredns"',
     ingressControllerSelector: 'job=~"ingress-nginx-controller-metrics|nginx-ingress.*"',
+    // ingress controller 유무 — false면 `baseline-network` group(IngressControllerDown/5xx/4xx) 자체 비활성.
+    // ingress-nginx 메트릭이 부재한 클러스터(Gateway API 등)에서는 카피본의 `main.libsonnet`에서
+    // `_config+:: { ingressControllerEnabled: false }` 로 override. 디폴트는 true.
+    ingressControllerEnabled: true,
     nodeExporterSelector: 'job="node-exporter"',
     kubeStateMetricsSelector: 'job="kube-state-metrics"',
 

@@ -36,10 +36,12 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
+  # ⚠️ auto-sync 의도적 제거 (수동 sync) — 안전 디폴트.
+  # chart App은 보통 운영 중이던 helm release(Prometheus/Grafana 본체 + PVC)를 adopt하는 stateful App.
+  # selfHeal/prune이 본체·운영 데이터를 건드릴 blast radius가 커서, diff 검토 후 수동 sync를 권장한다.
+  # best-practice: stateful/adopted 스택 = 수동, 재생성 가능한 `o11y-rules` App = auto 유지.
+  # 빈 클러스터에 신규 배포라 위험이 없다면 fork에서 `automated` 블록을 다시 넣어도 된다.
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true   # CRD-heavy chart라 SSA 권장
@@ -50,9 +52,6 @@ spec:
       kind: StatefulSet
       jsonPointers:
         - /spec/volumeClaimTemplates
-    - group: monitoring.coreos.com
-      kind: Alertmanager
-      jsonPointers:
-        - /spec/alertmanagerConfigMatcherStrategy
-      # patches/alertmanager-matcherstrategy.yaml을 직접 적용하는 경우 chart values와 diff 회피.
-      # chart values로 처리하면 이 항목은 불필요 — 환경 운영 방식에 따라 선택.
+    # `alertmanagerConfigMatcherStrategy`는 `_base/values-base.yaml`(chart values)이 단일 truth source.
+    # 같은 필드를 `ignoreDifferences`에 박으면 ArgoCD가 영원히 ignore하여 cluster CR에 적용되지 않음.
+    # 비상시에만 `patches/alertmanager-matcherstrategy.yaml` 등으로 manual 적용. 평상시는 ignoreDifferences에 추가 X.
