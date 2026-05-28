@@ -25,4 +25,8 @@ kubectl get svc,ep -n <ingress-ns>
 3. LoadBalancer service 외부 IP 부착 안 됐으면 cloud-controller 확인.
 
 ## Root cause
-설정 errror (잘못된 ConfigMap), TLS cert 누락, RBAC 권한 부족, 노드 부족으로 scheduling 실패, 클라우드 LB 할당 실패.
+설정 error (잘못된 ConfigMap), TLS cert 누락, RBAC 권한 부족, 노드 부족으로 scheduling 실패, 클라우드 LB 할당 실패.
+
+## Cluster doesn't run ingress-nginx?
+
+Gateway API, traefik, 또는 ingress 자체를 안 쓰는 클러스터에서는 이 alert이 영구 firing 한다(`absent(up{...} == 1)`). silence 대신 fork의 `main.libsonnet`에서 `_config+:: { ingressControllerEnabled: false }`로 `baseline-network` group을 빌드 시점에 비활성화하라. 근거: [learnings/2026-05-21-ingress-controller-flag.md](../learnings/2026-05-21-ingress-controller-flag.md).

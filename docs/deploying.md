@@ -151,6 +151,43 @@ prometheus-operator 디폴트 `OnNamespace` strategy. `values-base.yaml`이 `ale
 
 ArgoCD 디폴트 `in-cluster`는 Cluster Generator selector에 안 잡힘. self-managed cluster도 cluster Secret으로 명시 등록 + 라벨링 필요. [`docs/cluster-labels.md`](cluster-labels.md) 참조.
 
+## 환경별 선택적 튜닝
+
+기본 scaffold만으로 대부분 환경이 동작하지만, 클러스터 특성에 따라 fork에서 추가 결정이 필요한 항목.
+
+### chart Application의 sync 모드
+
+`deploy/envs/example-dev/apps/kube-prometheus-stack.yaml`은 디폴트로 `automated` 블록을 **제거**(수동 sync) 상태로 제공한다. 운영 중인 helm release를 adopt하는 stateful App이라 selfHeal/prune의 blast radius가 크기 때문 — `o11y-rules` App은 auto + selfHeal + prune 유지(재생성 가능).
+
+빈 클러스터에 신규 배포라 위험이 낮다면 fork에서 `automated` 블록을 다시 추가해도 된다. 자세한 결정 근거: [learnings/2026-05-21-gitops-safety-stateful-charts.md](learnings/2026-05-21-gitops-safety-stateful-charts.md).
+
+### PVC 보호 패턴
+
+운영 데이터(시계열, Grafana 대시보드/datasource 설정)를 담은 PVC는 세 layer에서 보호한다:
+
+1. **chart App 수동 sync** (위 항목 — L1)
+2. **PVC `sync-options` 어노테이션**: `argocd.argoproj.io/sync-options: Prune=false,Delete=false`
+   - `example-dev/values.yaml`에 주석으로 패턴 가이드 있음 — Prometheus storageSpec + Grafana persistence 각각
+3. **StorageClass `reclaimPolicy: Retain`**: 클러스터 인프라 레벨, repo 외부
+
+Layer 1·2·3이 각각 다른 attack surface(자동화 사고 / git 변경 / 사람 직접 명령)를 막는다. 시나리오별 매핑은 [learnings/2026-05-21-gitops-safety-stateful-charts.md](learnings/2026-05-21-gitops-safety-stateful-charts.md) 표 참조.
+
+### ingress controller 미사용 클러스터
+
+Gateway API, traefik, 또는 ingress 자체를 안 쓰는 클러스터에서는 `baseline-network` alert group(`IngressControllerDown` / `HighIngress5xxRate` / `HighIngress4xxRate`)이 영구 firing 또는 dormant 상태로 남는다. fork의 `main.libsonnet`에서 `_config` override로 group 자체를 비활성:
+
+```jsonnet
+local prometheus = (import 'prometheus/mixin.libsonnet') + {
+  _config+:: { ingressControllerEnabled: false },
+};
+```
+
+빌드 후 `manifests/prometheus-rules/baseline.yaml`에서 group이 빠진 것을 확인. 자세한 근거: [learnings/2026-05-21-ingress-controller-flag.md](learnings/2026-05-21-ingress-controller-flag.md).
+
+### `runbookBase` URL
+
+`components/prometheus/config.libsonnet`의 `runbookBase`는 OSS 디폴트로 이 repo(`seokheejang/o11y`)를 가리킨다. 카피본은 자신의 git 호스트로 가리키도록 fork에서 override 권장 — 알람 메시지의 runbook 링크가 운영자가 접근 가능한 위치를 향하게.
+
 ## 관련 docs
 
 - [docs/cluster-labels.md](cluster-labels.md) — cluster Secret 라벨 컨벤션
